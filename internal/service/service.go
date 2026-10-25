@@ -7,48 +7,49 @@ import (
 
 	"github.com/HappyFatPug/go-course-metrics/internal/logger"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
+	"github.com/HappyFatPug/go-course-metrics/internal/repository"
 )
 
-var gaugeBuf = make(map[string]float64)
-var counterBuf = make(map[string]int64)
+type MetricsService struct {
+	repo repository.MetricsRepository
+}
 
-func UpdateMetric(mType, mName, mValue string) error {
+func NewMetricsService(repo repository.MetricsRepository) *MetricsService {
+	return &MetricsService{repo: repo}
+}
+
+func (s *MetricsService) UpdateMetric(mType, mName, mValue string) error {
 	var err error
-
 	switch mType {
-	case models.Gauge:
-		err = updateGauge(mName, mValue)
 	case models.Counter:
-		err = updateCounter(mName, mValue)
+		err = s.updateCounter(mName, mValue)
+	case models.Gauge:
+		err = s.updateGauge(mName, mValue)
 	default:
-		err = errors.New("invalid metric type")
+		err = errors.New("wrong metric type")
 	}
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
-func updateGauge(name string, strValue string) error {
-	value, err := strconv.ParseFloat(strValue, 64)
-	if err != nil {
-		return err
-	}
-	gaugeBuf[name] = value
-	logger.Logger.Debug(fmt.Sprintf("Gauge value %s updated, new value: %.2f", name, gaugeBuf[name]))
-	logger.Logger.Debug(fmt.Sprintf("Received gauge value: %.2f", value))
-	return nil
-}
-
-func updateCounter(name, strValue string) error {
+func (s *MetricsService) updateCounter(name, strValue string) error {
 	value, err := strconv.ParseInt(strValue, 10, 64)
 	if err != nil {
 		return err
 	}
-	counterBuf[name] += value
-	logger.Logger.Debug(fmt.Sprintf("Counter value %s updated, new value: %d", name, counterBuf[name]))
-	logger.Logger.Debug(fmt.Sprintf("Received counter value: %d", value))
+	s.repo.Save(&models.Metrics{ID: name, MType: models.Counter, Delta: &value})
+	logger.Logger.Debug(fmt.Sprintf("Counter value %s updated, new value: %d", name, value))
+	// logger.Logger.Debug(fmt.Sprintf("Received counter value: %d", value))
+	return nil
+}
+
+func (s *MetricsService) updateGauge(name string, strValue string) error {
+	value, err := strconv.ParseFloat(strValue, 64)
+	if err != nil {
+		return err
+	}
+	s.repo.Save(&models.Metrics{ID: name, MType: models.Gauge, Value: &value})
+	logger.Logger.Debug(fmt.Sprintf("Gauge value %s updated, new value: %.2f", name, value))
+	// logger.Logger.Debug(fmt.Sprintf("Received gauge value: %.2f", value))
 	return nil
 }

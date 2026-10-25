@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/HappyFatPug/go-course-metrics/internal/logger"
+	"github.com/HappyFatPug/go-course-metrics/internal/repository"
+	"github.com/HappyFatPug/go-course-metrics/internal/service"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
@@ -46,15 +48,17 @@ func TestUpdateMetricHandler(t *testing.T) {
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			logger.ConfigureLogger()
+			s := service.NewMetricsService(repository.NewInMemMetricsRepository())
+
 			router := mux.NewRouter()
-			router.HandleFunc("/update/{type}/{name}/{value}", UpdateMetric).Methods("POST")
+			router.HandleFunc("/update/{type}/{name}/{value}", UpdateMetric(s)).Methods("POST")
 
 			request := httptest.NewRequest(test.method, test.url, nil)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, request)
 			r := w.Result()
-			
+
 			assert.Equal(t, test.wantCode, r.StatusCode)
 		})
 	}

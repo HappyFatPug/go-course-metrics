@@ -5,16 +5,20 @@ import (
 
 	"github.com/HappyFatPug/go-course-metrics/internal/handler"
 	"github.com/HappyFatPug/go-course-metrics/internal/logger"
+	"github.com/HappyFatPug/go-course-metrics/internal/repository"
+	"github.com/HappyFatPug/go-course-metrics/internal/service"
 	"github.com/gorilla/mux"
 )
 
 func main() {
 	logger.ConfigureLogger()
 
-	r := mux.NewRouter()
-	r.HandleFunc("/update/{type}/{name}/{value}", handler.UpdateMetric).Methods("POST")
+	s := service.NewMetricsService(repository.NewInMemMetricsRepository())
 
-	err := http.ListenAndServe(":8080", r)
+	router := mux.NewRouter()
+	router.HandleFunc("/update/{type}/{name}/{value}", handler.UpdateMetric(s)).Methods("POST")
+
+	err := http.ListenAndServe(":8080", router)
 	if err != nil {
 		logger.Logger.Error(err.Error())
 	}

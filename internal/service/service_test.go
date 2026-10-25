@@ -5,6 +5,7 @@ import (
 
 	"github.com/HappyFatPug/go-course-metrics/internal/logger"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
+	"github.com/HappyFatPug/go-course-metrics/internal/repository"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -57,10 +58,12 @@ func TestUpdateMetric(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			logger.ConfigureLogger()
 
+			s := NewMetricsService(repository.NewInMemMetricsRepository())
+
 			if !test.wantError {
-				assert.NoError(t, UpdateMetric(test.mType, test.mName, test.mValue))
+				assert.NoError(t, s.UpdateMetric(test.mType, test.mName, test.mValue))
 			} else {
-				assert.Error(t, UpdateMetric(test.mType, test.mName, test.mValue))
+				assert.Error(t, s.UpdateMetric(test.mType, test.mName, test.mValue))
 			}
 		})
 	}
