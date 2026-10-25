@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/HappyFatPug/go-course-metrics/internal/logger"
+	models "github.com/HappyFatPug/go-course-metrics/internal/model"
 )
 
 var gaugeBuf = make(map[string]float64)
@@ -15,9 +16,9 @@ func UpdateMetric(mType, mName, mValue string) error {
 	var err error
 
 	switch mType {
-	case "gauge":
+	case models.Gauge:
 		err = updateGauge(mName, mValue)
-	case "counter":
+	case models.Counter:
 		err = updateCounter(mName, mValue)
 	default:
 		err = errors.New("invalid metric type")
@@ -37,6 +38,7 @@ func updateGauge(name string, strValue string) error {
 	}
 	gaugeBuf[name] = value
 	logger.Logger.Debug(fmt.Sprintf("Gauge value %s updated, new value: %.2f", name, gaugeBuf[name]))
+	logger.Logger.Debug(fmt.Sprintf("Received gauge value: %.2f", value))
 	return nil
 }
 
@@ -47,5 +49,6 @@ func updateCounter(name, strValue string) error {
 	}
 	counterBuf[name] += value
 	logger.Logger.Debug(fmt.Sprintf("Counter value %s updated, new value: %d", name, counterBuf[name]))
+	logger.Logger.Debug(fmt.Sprintf("Received counter value: %d", value))
 	return nil
 }

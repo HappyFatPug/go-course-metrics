@@ -13,6 +13,8 @@ func UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	metricName := vars["name"]
 	metricValue := vars["value"]
 
+	// fmt.Printf("%s %s %s\n", metricName, metricType, metricValue)
+
 	err := service.UpdateMetric(metricType, metricName, metricValue)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
