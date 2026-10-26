@@ -1,6 +1,7 @@
 package service
 
 import (
+	"log/slog"
 	"testing"
 
 	"github.com/HappyFatPug/go-course-metrics/internal/logger"
@@ -56,7 +57,7 @@ func TestUpdateMetric(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			logger.ConfigureLogger()
+			logger.ConfigureLogger(slog.LevelInfo)
 
 			s := NewMetricsService(repository.NewInMemMetricsRepository())
 

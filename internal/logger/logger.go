@@ -7,11 +7,8 @@ import (
 
 var Logger *slog.Logger
 
-func getLogger() *slog.Logger {
-	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
-	return slog.New(handler)
-}
-
-func ConfigureLogger() {
-	Logger = getLogger()
+func ConfigureLogger(level slog.Leveler) *slog.Logger {
+	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})
+	Logger = slog.New(handler)
+	return Logger
 }

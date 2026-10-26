@@ -53,3 +53,11 @@ func (s *MetricsService) updateGauge(name string, strValue string) error {
 	// logger.Logger.Debug(fmt.Sprintf("Received gauge value: %.2f", value))
 	return nil
 }
+
+func (s *MetricsService) GetMetric(mType, mName string) (*models.Metrics, error) {
+	metrics, ok := s.repo.Find(mType, mName)
+	if !ok {
+		return nil, errors.New("Metrics not found")
+	}
+	return metrics, nil
+}
