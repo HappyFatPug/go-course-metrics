@@ -5,6 +5,6 @@ import (
 )
 
 type MetricsRepository interface {
-	Find(MType, name string) (*models.Metrics, bool)
+	Find(mType, name string) (*models.Metrics, bool)
 	Save(m *models.Metrics) error
 }

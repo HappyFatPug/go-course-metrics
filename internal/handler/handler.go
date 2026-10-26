@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/HappyFatPug/go-course-metrics/internal/app"
@@ -20,20 +18,6 @@ func UpdateMetric(app *app.App) http.HandlerFunc {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
-		}
-
-		if app.Debug {
-			mm, err := app.Service.GetMetric(metricType, metricName)
-			if err != nil {
-				app.Logger.Error(err.Error())
-			} else {
-				jsonData, err := json.Marshal(mm)
-				if err != nil {
-					app.Logger.Error(err.Error())
-				} else {
-					app.Logger.Debug(fmt.Sprintf("Updated metrics: %s", jsonData))
-				}
-			}
 		}
 
 		w.Header().Set("content-type", "text/plain")

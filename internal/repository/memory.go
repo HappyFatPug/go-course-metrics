@@ -18,8 +18,8 @@ func NewInMemMetricsRepository() *InMemMetricsRepository {
 	}
 }
 
-func (repo *InMemMetricsRepository) Find(MType, name string) (*models.Metrics, bool) {
-	switch MType {
+func (repo *InMemMetricsRepository) Find(mType, name string) (*models.Metrics, bool) {
+	switch mType {
 	case models.Counter:
 		value, ok := repo.counterBuf[name]
 		if ok {
@@ -40,7 +40,7 @@ func (repo *InMemMetricsRepository) Save(m *models.Metrics) error {
 		if m.Delta == nil {
 			return errors.New("counter delta is undefined")
 		}
-		repo.counterBuf[m.ID] += *m.Delta
+		repo.counterBuf[m.ID] = *m.Delta
 
 	case models.Gauge:
 		if m.Value == nil {

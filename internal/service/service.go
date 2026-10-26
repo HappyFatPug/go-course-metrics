@@ -37,9 +37,14 @@ func (s *MetricsService) updateCounter(name, strValue string) error {
 	if err != nil {
 		return err
 	}
-	s.repo.Save(&models.Metrics{ID: name, MType: models.Counter, Delta: &value})
+	metrics := s.GetOrCreateMetric(models.Counter, name)
+	if metrics.Delta != nil {
+		value += *metrics.Delta
+	}
+	metrics.Delta = &value
+
+	s.repo.Save(metrics)
 	logger.Logger.Debug(fmt.Sprintf("Counter value %s updated, new value: %d", name, value))
-	// logger.Logger.Debug(fmt.Sprintf("Received counter value: %d", value))
 	return nil
 }
 
@@ -48,16 +53,16 @@ func (s *MetricsService) updateGauge(name string, strValue string) error {
 	if err != nil {
 		return err
 	}
+
 	s.repo.Save(&models.Metrics{ID: name, MType: models.Gauge, Value: &value})
 	logger.Logger.Debug(fmt.Sprintf("Gauge value %s updated, new value: %.2f", name, value))
-	// logger.Logger.Debug(fmt.Sprintf("Received gauge value: %.2f", value))
 	return nil
 }
 
-func (s *MetricsService) GetMetric(mType, mName string) (*models.Metrics, error) {
-	metrics, ok := s.repo.Find(mType, mName)
+func (s *MetricsService) GetOrCreateMetric(mType, name string) *models.Metrics {
+	metrics, ok := s.repo.Find(mType, name)
 	if !ok {
-		return nil, errors.New("Metrics not found")
+		return &models.Metrics{ID: name, MType: mType}
 	}
-	return metrics, nil
+	return metrics
 }
