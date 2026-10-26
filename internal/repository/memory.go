@@ -2,7 +2,9 @@ package repository
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/HappyFatPug/go-course-metrics/internal/logger"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
 )
 
@@ -41,12 +43,14 @@ func (repo *InMemMetricsRepository) Save(m *models.Metrics) error {
 			return errors.New("counter delta is undefined")
 		}
 		repo.counterBuf[m.ID] = *m.Delta
+		logger.Logger.Debug(fmt.Sprintf("Counter saved: %s=%d", m.ID, *m.Delta))
 
 	case models.Gauge:
 		if m.Value == nil {
 			return errors.New("gauge value is undefined")
 		}
 		repo.gaugeBuf[m.ID] = *m.Value
+		logger.Logger.Debug(fmt.Sprintf("Gauge saved: %s=%.2f", m.ID, *m.Value))
 
 	default:
 		return errors.New("wrong type")
