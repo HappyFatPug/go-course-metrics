@@ -26,11 +26,11 @@ func main() {
 		}
 	}()
 
-	// go func() {
-	// 	for range reportTicker.C {
-	// 		fmt.Println("REPORT!")
-	// 	}
-	// }()
+	go func() {
+		for range reportTicker.C {
+			app.Service.SendAll()
+		}
+	}()
 
 	select {}
 }
