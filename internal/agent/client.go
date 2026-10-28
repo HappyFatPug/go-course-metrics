@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -36,6 +37,8 @@ func (client *Client) postMetrics(m *models.Metrics) error {
 		urlPath = fmt.Sprintf("/update/counter/%s/%d", m.ID, *m.Delta)
 	case models.Gauge:
 		urlPath = fmt.Sprintf("/update/gauge/%s/%f", m.ID, *m.Value)
+	default:
+		return errors.New("wrong type")
 	}
 
 	endpoint = fmt.Sprintf("%s://%s:%d%s", client.scheme, client.host, client.port, urlPath)

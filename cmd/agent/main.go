@@ -11,7 +11,7 @@ var PollCount int64 = 0
 var RandomValue float64
 
 func main() {
-	app := agent.ConfigureTestApp(2*time.Second, 5*time.Second, true)
+	app := agent.ConfigureTestApp(2*time.Second, 10*time.Second, false)
 
 	pollTicker := time.NewTicker(app.PollInterval)
 	defer pollTicker.Stop()

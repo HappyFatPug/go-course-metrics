@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	app := app.ConfigureTestApp(true)
+	app := app.ConfigureTestApp(false)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/update/{type}/{name}/{value}", handler.UpdateMetric(app)).Methods("POST")

@@ -26,7 +26,7 @@ func (s *MetricsService) UpdateMetric(mType, mName, mValue string) error {
 	case models.Gauge:
 		err = s.updateGauge(mName, mValue)
 	default:
-		err = errors.New("wrong metric type")
+		err = errors.New("wrong type")
 	}
 
 	return err

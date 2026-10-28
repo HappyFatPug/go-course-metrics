@@ -81,7 +81,6 @@ func (s *AgentService) SendAll() {
 	if err != nil {
 		logger.Logger.Error(err.Error())
 	}
-
 }
 
 func (s *AgentService) SendMemStatMetrics() error {
