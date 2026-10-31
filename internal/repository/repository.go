@@ -7,4 +7,5 @@ import (
 type MetricsRepository interface {
 	Find(mType, name string) (*models.Metrics, bool)
 	Save(m *models.Metrics) error
+	GetAll() []models.Metrics
 }

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metrics</title>
+
+    <style>
+        body {
+            font-family: monospace;
+            margin: 40px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            background-color: #ffffff;
+        }
+        th, td {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 5px;
+        }
+        th {
+            background-color: #f2f2f2;
+            width: 50%; /* Makes both columns equal width */
+        }
+        h2 {
+            color: #333333;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Counters</h2>
+        <table>
+            <thead>
+                <tr><th>Name</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+                {{range .Counters}}
+                <tr>
+                    <td>{{.Name}}</td>
+                    <td>{{.Value}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+
+        <h2>Gauges</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Gauges}}
+                <tr>
+                    <td>{{.Name}}</td>
+                    <td>{{.Value}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

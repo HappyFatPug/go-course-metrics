@@ -66,3 +66,11 @@ func (s *MetricsService) GetOrCreateMetric(mType, name string) *models.Metrics {
 	}
 	return metrics
 }
+
+func (s *MetricsService) GetMetric(mType, name string) (*models.Metrics, bool) {
+	return s.repo.Find(mType, name)
+}
+
+func (s *MetricsService) GetAllMetrics() []models.Metrics {
+	return s.repo.GetAll()
+}

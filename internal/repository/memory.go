@@ -57,3 +57,16 @@ func (repo *InMemMetricsRepository) Save(m *models.Metrics) error {
 	}
 	return nil
 }
+
+func (repo *InMemMetricsRepository) GetAll() []models.Metrics {
+	var metrics []models.Metrics
+
+	for cName, cValue := range repo.counterBuf {
+		metrics = append(metrics, models.Metrics{ID: cName, MType: models.Counter, Delta: &cValue})
+	}
+	for gName, gValue := range repo.gaugeBuf {
+		metrics = append(metrics, models.Metrics{ID: gName, MType: models.Gauge, Value: &gValue})
+	}
+
+	return metrics
+}

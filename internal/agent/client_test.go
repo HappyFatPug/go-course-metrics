@@ -39,7 +39,7 @@ func TestPostMetrics(t *testing.T) {
 				MType: models.Gauge,
 				Value: &gaugeValue,
 			},
-			wantUrlPath: "/update/gauge/test gauge/0.110000",
+			wantUrlPath: "/update/gauge/test gauge/0.11",
 			wantError:   false,
 		},
 		{
