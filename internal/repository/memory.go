@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/HappyFatPug/go-course-metrics/internal/logger"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
@@ -10,7 +11,9 @@ import (
 
 type InMemMetricsRepository struct {
 	gaugeBuf   map[string]float64
+	gaugeMu    sync.RWMutex
 	counterBuf map[string]int64
+	counterMu  sync.RWMutex
 }
 
 func NewInMemMetricsRepository() *InMemMetricsRepository {
@@ -23,11 +26,15 @@ func NewInMemMetricsRepository() *InMemMetricsRepository {
 func (repo *InMemMetricsRepository) Find(mType, name string) (*models.Metrics, bool) {
 	switch mType {
 	case models.Counter:
+		repo.counterMu.RLock()
+		defer repo.counterMu.RUnlock()
 		value, ok := repo.counterBuf[name]
 		if ok {
 			return &models.Metrics{ID: name, MType: models.Counter, Delta: &value}, ok
 		}
 	case models.Gauge:
+		repo.gaugeMu.RLock()
+		defer repo.gaugeMu.RUnlock()
 		value, ok := repo.gaugeBuf[name]
 		if ok {
 			return &models.Metrics{ID: name, MType: models.Gauge, Value: &value}, ok
@@ -42,6 +49,8 @@ func (repo *InMemMetricsRepository) Save(m *models.Metrics) error {
 		if m.Delta == nil {
 			return errors.New("counter delta is undefined")
 		}
+		repo.counterMu.Lock()
+		defer repo.counterMu.Unlock()
 		repo.counterBuf[m.ID] = *m.Delta
 		logger.Logger.Debug(fmt.Sprintf("Counter saved: %s=%d", m.ID, *m.Delta))
 
@@ -49,6 +58,8 @@ func (repo *InMemMetricsRepository) Save(m *models.Metrics) error {
 		if m.Value == nil {
 			return errors.New("gauge value is undefined")
 		}
+		repo.gaugeMu.Lock()
+		defer repo.gaugeMu.Unlock()
 		repo.gaugeBuf[m.ID] = *m.Value
 		logger.Logger.Debug(fmt.Sprintf("Gauge saved: %s=%.2f", m.ID, *m.Value))
 
@@ -61,9 +72,13 @@ func (repo *InMemMetricsRepository) Save(m *models.Metrics) error {
 func (repo *InMemMetricsRepository) GetAll() []models.Metrics {
 	var metrics []models.Metrics
 
+	repo.counterMu.RLock()
+	defer repo.counterMu.RUnlock()
 	for cName, cValue := range repo.counterBuf {
 		metrics = append(metrics, models.Metrics{ID: cName, MType: models.Counter, Delta: &cValue})
 	}
+	repo.gaugeMu.RLock()
+	defer repo.gaugeMu.RUnlock()
 	for gName, gValue := range repo.gaugeBuf {
 		metrics = append(metrics, models.Metrics{ID: gName, MType: models.Gauge, Value: &gValue})
 	}
