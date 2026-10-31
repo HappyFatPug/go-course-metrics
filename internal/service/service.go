@@ -37,7 +37,7 @@ func (s *MetricsService) updateCounter(name, strValue string) error {
 	if err != nil {
 		return err
 	}
-	metrics := s.GetOrCreateMetric(models.Counter, name)
+	metrics := s.getOrCreateMetric(models.Counter, name)
 	if metrics.Delta != nil {
 		value += *metrics.Delta
 	}
@@ -59,7 +59,7 @@ func (s *MetricsService) updateGauge(name string, strValue string) error {
 	return nil
 }
 
-func (s *MetricsService) GetOrCreateMetric(mType, name string) *models.Metrics {
+func (s *MetricsService) getOrCreateMetric(mType, name string) *models.Metrics {
 	metrics, ok := s.repo.Find(mType, name)
 	if !ok {
 		return &models.Metrics{ID: name, MType: mType}

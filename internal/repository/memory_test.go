@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"slices"
 	"testing"
 
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
@@ -88,5 +89,23 @@ func TestInMemMetricsRepositoryFind(t *testing.T) {
 			_, found := repo.Find(test.mType, test.mName)
 			assert.Equal(t, test.wantFind, found)
 		})
+	}
+}
+
+func TestInMemMetricsRepositoryGetAll(t *testing.T) {
+	repo := NewInMemMetricsRepository()
+
+	var testCounterValue int64 = 11
+	repo.Save(&models.Metrics{ID: "testCounter", MType: models.Counter, Delta: &testCounterValue})
+	var testGaugeValue float64 = 44.33
+	repo.Save(&models.Metrics{ID: "testGauge", MType: models.Gauge, Value: &testGaugeValue})
+
+	metrics := repo.GetAll()
+
+	assert.Len(t, metrics, 2)
+
+	for _, m := range metrics {
+		assert.True(t, slices.Contains([]string{"testCounter", "testGauge"}, m.ID))
+		assert.True(t, slices.Contains([]string{"11", "44.33"}, m.ValueStr()))
 	}
 }
