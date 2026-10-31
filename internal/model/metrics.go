@@ -21,11 +21,5 @@ type Metrics struct {
 }
 
 func (m *Metrics) ValueStr() string {
-	switch m.MType {
-	case Counter:
-		return strconv.FormatInt(*m.Delta, 10)
-	case Gauge:
-		return strconv.FormatFloat(*m.Value, 'f', -1, 64)
-	}
-	return ""
+	return strconv.FormatFloat(*m.Value, 'f', -1, 64)
 }

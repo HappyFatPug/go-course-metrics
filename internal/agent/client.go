@@ -34,7 +34,7 @@ func (client *Client) postMetrics(m *models.Metrics) error {
 
 	switch m.MType {
 	case models.Counter:
-		urlPath = fmt.Sprintf("/update/counter/%s/%d", m.ID, *m.Delta)
+		urlPath = fmt.Sprintf("/update/counter/%s/%s", m.ID, m.ValueStr())
 	case models.Gauge:
 		urlPath = fmt.Sprintf("/update/gauge/%s/%s", m.ID, m.ValueStr())
 	default:

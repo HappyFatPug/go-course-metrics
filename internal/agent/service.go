@@ -28,13 +28,28 @@ func NewAgentService(repo repository.MetricsRepository, client *Client) *AgentSe
 	}
 }
 
-func (s *AgentService) UpdateAll(pollCount int64, rValue float64) error {
+func (s *AgentService) saveCounter (name string, value int64) error {
+	fvalue := float64(value)
+	return s.repo.Save(&models.Metrics{ID: name, MType: models.Counter, Value: &fvalue})
+}
+
+func (s *AgentService) saveGauge (name string, value float64) error {
+	return s.repo.Save(&models.Metrics{ID: name, MType: models.Gauge, Value: &value})
+}
+
+func (s *AgentService) UpdateAll(pollCount int64, randomValue float64) error {
 	if err := s.updateMemStatMetrics(); err != nil {
 		return err
 	}
 
-	s.repo.Save(&models.Metrics{ID: "PollCount", MType: models.Counter, Delta: &pollCount})
-	s.repo.Save(&models.Metrics{ID: "RandomValue", MType: models.Gauge, Value: &rValue})
+	err := s.saveCounter("PollCount", pollCount)
+	if err != nil {
+		return err
+	}
+	err = s.saveGauge("RandomValue", randomValue)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -61,7 +76,10 @@ func (s *AgentService) updateMemStatMetrics() error {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			value = float64(field.Int())
 		}
-		s.repo.Save(&models.Metrics{ID: fieldName, MType: models.Gauge, Value: &value})
+		err := s.saveGauge(fieldName, value)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

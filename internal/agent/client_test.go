@@ -13,8 +13,8 @@ import (
 )
 
 func TestPostMetrics(t *testing.T) {
-	var counterValue int64 = 11
 	var gaugeValue float64 = 0.11
+	var counterValue float64 = 11
 
 	testCases := []struct {
 		name        string
@@ -27,7 +27,7 @@ func TestPostMetrics(t *testing.T) {
 			m: &models.Metrics{
 				ID:    "test counter",
 				MType: models.Counter,
-				Delta: &counterValue,
+				Value: &counterValue,
 			},
 			wantUrlPath: "/update/counter/test counter/11",
 			wantError:   false,
@@ -47,9 +47,9 @@ func TestPostMetrics(t *testing.T) {
 			m: &models.Metrics{
 				ID:    "test counter",
 				MType: "models.Counter",
-				Delta: &counterValue,
+				Value: &counterValue,
 			},
-			wantUrlPath: "/update/counter/test counter/11",
+			wantUrlPath: "",
 			wantError:   true,
 		},
 	}

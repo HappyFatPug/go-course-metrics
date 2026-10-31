@@ -29,8 +29,9 @@ func (repo *InMemMetricsRepository) Find(mType, name string) (*models.Metrics, b
 		repo.counterMu.RLock()
 		defer repo.counterMu.RUnlock()
 		value, ok := repo.counterBuf[name]
+		valueFloat := float64(value)
 		if ok {
-			return &models.Metrics{ID: name, MType: models.Counter, Delta: &value}, ok
+			return &models.Metrics{ID: name, MType: models.Counter, Value: &valueFloat}, ok
 		}
 	case models.Gauge:
 		repo.gaugeMu.RLock()
@@ -44,24 +45,21 @@ func (repo *InMemMetricsRepository) Find(mType, name string) (*models.Metrics, b
 }
 
 func (repo *InMemMetricsRepository) Save(m *models.Metrics) error {
+	if m.Value == nil {
+		return errors.New("value is undefined")
+	}
 	switch m.MType {
 	case models.Counter:
-		if m.Delta == nil {
-			return errors.New("counter delta is undefined")
-		}
 		repo.counterMu.Lock()
 		defer repo.counterMu.Unlock()
-		repo.counterBuf[m.ID] = *m.Delta
-		logger.Logger.Debug(fmt.Sprintf("Counter saved: %s=%d", m.ID, *m.Delta))
+		repo.counterBuf[m.ID] = int64(*m.Value)
+		logger.Logger.Debug(fmt.Sprintf("Counter saved: %s=%s", m.ID, m.ValueStr()))
 
 	case models.Gauge:
-		if m.Value == nil {
-			return errors.New("gauge value is undefined")
-		}
 		repo.gaugeMu.Lock()
 		defer repo.gaugeMu.Unlock()
 		repo.gaugeBuf[m.ID] = *m.Value
-		logger.Logger.Debug(fmt.Sprintf("Gauge saved: %s=%.2f", m.ID, *m.Value))
+		logger.Logger.Debug(fmt.Sprintf("Gauge saved: %s=%s", m.ID, m.ValueStr()))
 
 	default:
 		return errors.New("wrong type")
@@ -75,7 +73,8 @@ func (repo *InMemMetricsRepository) GetAll() []models.Metrics {
 	repo.counterMu.RLock()
 	defer repo.counterMu.RUnlock()
 	for cName, cValue := range repo.counterBuf {
-		metrics = append(metrics, models.Metrics{ID: cName, MType: models.Counter, Delta: &cValue})
+		value := float64(cValue)
+		metrics = append(metrics, models.Metrics{ID: cName, MType: models.Counter, Value: &value})
 	}
 	repo.gaugeMu.RLock()
 	defer repo.gaugeMu.RUnlock()

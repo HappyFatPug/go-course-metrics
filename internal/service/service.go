@@ -35,13 +35,14 @@ func (s *MetricsService) UpdateMetric(mType, mName, mValue string) error {
 func (s *MetricsService) updateCounter(name, strValue string) error {
 	value, err := strconv.ParseInt(strValue, 10, 64)
 	if err != nil {
-		return err
+		return errors.New("value must be integer")
 	}
 	metrics := s.getOrCreateMetric(models.Counter, name)
-	if metrics.Delta != nil {
-		value += *metrics.Delta
+	fValue := float64(value)
+	if metrics.Value != nil {
+		fValue = fValue + *metrics.Value
 	}
-	metrics.Delta = &value
+	metrics.Value = &fValue
 
 	s.repo.Save(metrics)
 	logger.Logger.Debug(fmt.Sprintf("Counter value %s updated, new value: %d", name, value))

@@ -128,7 +128,8 @@ func TestGetMetric(t *testing.T) {
 			app := app.ConfigureTestApp(false)
 
 			for _, m := range initialMetrics {
-				app.Service.UpdateMetric(m.mType, m.ID, m.Value)
+				assert.NoError(t, app.Service.UpdateMetric(m.mType, m.ID, m.Value))
+				
 			}
 
 			router := mux.NewRouter()
@@ -173,7 +174,7 @@ func TestGetAll(t *testing.T) {
 	app := app.ConfigureTestApp(false)
 
 	for _, m := range initialMetrics {
-		app.Service.UpdateMetric(m.mType, m.ID, m.Value)
+		assert.NoError(t, app.Service.UpdateMetric(m.mType, m.ID, m.Value))
 	}
 
 	router := mux.NewRouter()
