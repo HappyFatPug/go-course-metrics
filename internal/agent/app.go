@@ -16,9 +16,11 @@ type App struct {
 	ReportInterval time.Duration
 }
 
-func ConfigureTestApp(pollInterval, reportInterval time.Duration, debug bool) *App {
+func ConfigureTestApp(pollInterval, reportInterval int64, host string, port uint16, debug bool) *App {
 	memRepo := repository.NewInMemMetricsRepository()
-	client := NewClient("http", "localhost", 8080)
+
+	client := NewClient("http", host, uint(port))
+
 	var lLevel slog.Leveler = slog.LevelInfo
 	if debug {
 		lLevel = slog.LevelDebug
@@ -28,7 +30,7 @@ func ConfigureTestApp(pollInterval, reportInterval time.Duration, debug bool) *A
 		Debug:          debug,
 		Service:        NewAgentService(memRepo, client),
 		Logger:         logger.ConfigureLogger(lLevel),
-		PollInterval:   pollInterval,
-		ReportInterval: reportInterval,
+		PollInterval:   time.Second * time.Duration(pollInterval),
+		ReportInterval: time.Second * time.Duration(reportInterval),
 	}
 }

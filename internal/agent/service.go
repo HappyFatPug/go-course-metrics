@@ -28,12 +28,12 @@ func NewAgentService(repo repository.MetricsRepository, client *Client) *AgentSe
 	}
 }
 
-func (s *AgentService) saveCounter (name string, value int64) error {
+func (s *AgentService) saveCounter(name string, value int64) error {
 	fvalue := float64(value)
 	return s.repo.Save(&models.Metrics{ID: name, MType: models.Counter, Value: &fvalue})
 }
 
-func (s *AgentService) saveGauge (name string, value float64) error {
+func (s *AgentService) saveGauge(name string, value float64) error {
 	return s.repo.Save(&models.Metrics{ID: name, MType: models.Gauge, Value: &value})
 }
 
