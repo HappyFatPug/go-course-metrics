@@ -13,13 +13,13 @@ import (
 )
 
 func TestPostMetrics(t *testing.T) {
-	var gaugeValue float64 = 0.11
+	var gaugeValue = 0.11
 	var counterValue float64 = 11
 
 	testCases := []struct {
 		name        string
 		m           *models.Metrics
-		wantUrlPath string
+		wantURLPath string
 		wantError   bool
 	}{
 		{
@@ -29,7 +29,7 @@ func TestPostMetrics(t *testing.T) {
 				MType: models.Counter,
 				Value: &counterValue,
 			},
-			wantUrlPath: "/update/counter/test counter/11",
+			wantURLPath: "/update/counter/test counter/11",
 			wantError:   false,
 		},
 		{
@@ -39,7 +39,7 @@ func TestPostMetrics(t *testing.T) {
 				MType: models.Gauge,
 				Value: &gaugeValue,
 			},
-			wantUrlPath: "/update/gauge/test gauge/0.11",
+			wantURLPath: "/update/gauge/test gauge/0.11",
 			wantError:   false,
 		},
 		{
@@ -49,7 +49,7 @@ func TestPostMetrics(t *testing.T) {
 				MType: "models.Counter",
 				Value: &counterValue,
 			},
-			wantUrlPath: "",
+			wantURLPath: "",
 			wantError:   true,
 		},
 	}
@@ -57,23 +57,23 @@ func TestPostMetrics(t *testing.T) {
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				assert.Exactly(t, test.wantUrlPath, r.URL.Path)
+				assert.Exactly(t, test.wantURLPath, r.URL.Path)
 
 				w.Header().Set("content-type", "text/plain")
 				w.WriteHeader(http.StatusOK)
 			}))
 			defer server.Close()
 
-			parsedTestUrl, err := url.Parse(server.URL)
+			parsedTestURL, err := url.Parse(server.URL)
 			require.NoError(t, err)
 
-			port, err := strconv.ParseUint(parsedTestUrl.Port(), 10, 64)
+			port, err := strconv.ParseUint(parsedTestURL.Port(), 10, 64)
 			require.NoError(t, err)
 
 			client := Client{
 				c:      server.Client(),
-				scheme: parsedTestUrl.Scheme,
-				host:   parsedTestUrl.Hostname(),
+				scheme: parsedTestURL.Scheme,
+				host:   parsedTestURL.Hostname(),
 				port:   uint(port),
 			}
 

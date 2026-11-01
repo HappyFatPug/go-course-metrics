@@ -63,7 +63,7 @@ func (s *AgentService) updateMemStatMetrics() error {
 	for _, fieldName := range strings.Fields(s.memStatNamesToUpdate) {
 		field := val.FieldByName(fieldName)
 		if !field.IsValid() {
-			return fmt.Errorf("Failed to read mem stat field: %s", fieldName)
+			return fmt.Errorf("failed to read mem stat field: %s", fieldName)
 		}
 
 		var value float64
