@@ -57,9 +57,7 @@ func TestUpdateMetric(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			logger.ConfigureLogger(slog.LevelInfo)
-
-			s := NewMetricsService(repository.NewInMemMetricsRepository())
+			s := NewMetricsService(repository.NewInMemMetricsRepository(), logger.ConfigureLogger(slog.LevelInfo))
 
 			if !test.wantError {
 				assert.NoError(t, s.UpdateMetric(test.mType, test.mName, test.mValue))

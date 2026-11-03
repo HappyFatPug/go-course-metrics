@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -75,6 +76,7 @@ func TestPostMetrics(t *testing.T) {
 				scheme: parsedTestURL.Scheme,
 				host:   parsedTestURL.Hostname(),
 				port:   uint(port),
+				logger: slog.Default(),
 			}
 
 			err = client.postMetrics(test.m)

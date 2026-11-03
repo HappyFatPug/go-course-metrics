@@ -1,9 +1,11 @@
 package agent
 
 import (
+	"fmt"
 	"log/slog"
 	"time"
 
+	"github.com/HappyFatPug/go-course-metrics/internal/config"
 	"github.com/HappyFatPug/go-course-metrics/internal/logger"
 	"github.com/HappyFatPug/go-course-metrics/internal/repository"
 )
@@ -16,21 +18,24 @@ type App struct {
 	ReportInterval time.Duration
 }
 
-func ConfigureTestApp(pollInterval, reportInterval int64, host string, port uint16, debug bool) *App {
-	memRepo := repository.NewInMemMetricsRepository()
-
-	client := NewClient("http", host, uint(port))
+func ConfigureTestApp(config *config.AgentConfig) *App {
+	fmt.Println(config.ClientConfig.NetAddr.String())
 
 	var lLevel slog.Leveler = slog.LevelInfo
-	if debug {
+	if config.Debug {
 		lLevel = slog.LevelDebug
 	}
+	logger := logger.ConfigureLogger(lLevel)
+
+	memRepo := repository.NewInMemMetricsRepository()
+
+	client := NewClient(config.ClientConfig, logger)
 
 	return &App{
-		Debug:          debug,
-		Service:        NewAgentService(memRepo, client),
-		Logger:         logger.ConfigureLogger(lLevel),
-		PollInterval:   time.Second * time.Duration(pollInterval),
-		ReportInterval: time.Second * time.Duration(reportInterval),
+		Debug:          config.Debug,
+		Service:        NewAgentService(memRepo, client, logger),
+		Logger:         logger,
+		PollInterval:   time.Second * time.Duration(config.PollInterval),
+		ReportInterval: time.Second * time.Duration(config.ReportInterval),
 	}
 }

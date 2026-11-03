@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"math/rand/v2"
+	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
@@ -10,20 +10,15 @@ import (
 	"time"
 
 	"github.com/HappyFatPug/go-course-metrics/internal/agent"
+	"github.com/HappyFatPug/go-course-metrics/internal/config"
 )
 
 var PollCount int64 = 0
 var RandomValue float64
 
 func main() {
-	parseFlags()
-
-	app := agent.ConfigureTestApp(
-		config.pollInterval,
-		config.reportInterval,
-		config.netAddr.Host,
-		config.netAddr.Port,
-		config.debug)
+	config := config.ParseAgentFlags()
+	app := agent.ConfigureTestApp(config)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -32,19 +27,15 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		app.Logger.Info("Poller started")
-		worker(ctx, app.PollInterval, func() {
-			PollCount += 1
-			RandomValue = rand.Float64()
-			app.Service.UpdateAll(PollCount, RandomValue)
-		})
+		app.Logger.Info("Poller started", slog.String("period", app.PollInterval.String()))
+		worker(ctx, app.PollInterval, app.Service.UpdateAll)
 		app.Logger.Info("Poller stopped")
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		app.Logger.Info("Sender started")
+		app.Logger.Info("Sender started", slog.String("period", app.ReportInterval.String()))
 		worker(ctx, app.ReportInterval, app.Service.SendAll)
 		app.Logger.Info("Sender stopped")
 	}()

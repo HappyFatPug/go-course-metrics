@@ -2,20 +2,28 @@ package service
 
 import (
 	"errors"
-	"fmt"
+	"log/slog"
 	"strconv"
 
-	"github.com/HappyFatPug/go-course-metrics/internal/logger"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
-	"github.com/HappyFatPug/go-course-metrics/internal/repository"
 )
 
-type MetricsService struct {
-	repo repository.MetricsRepository
+type MetricsRepository interface {
+	Find(mType, name string) (*models.Metrics, bool)
+	Save(m *models.Metrics) error
+	GetAll() []models.Metrics
 }
 
-func NewMetricsService(repo repository.MetricsRepository) *MetricsService {
-	return &MetricsService{repo: repo}
+type MetricsService struct {
+	repo   MetricsRepository
+	logger *slog.Logger
+}
+
+func NewMetricsService(repo MetricsRepository, logger *slog.Logger) *MetricsService {
+	return &MetricsService{
+		repo:   repo,
+		logger: logger,
+	}
 }
 
 func (s *MetricsService) UpdateMetric(mType, mName, mValue string) error {
@@ -44,8 +52,12 @@ func (s *MetricsService) updateCounter(name, strValue string) error {
 	}
 	metrics.Value = &fValue
 
-	s.repo.Save(metrics)
-	logger.Logger.Debug(fmt.Sprintf("Counter value %s updated, new value: %d", name, value))
+	err = s.repo.Save(metrics)
+	if err != nil {
+		return err
+	}
+	s.logger.Debug("Metric updated", slog.String("mType", models.Counter), slog.String("ID", name),
+		slog.Int64("calue", value))
 	return nil
 }
 
@@ -55,8 +67,12 @@ func (s *MetricsService) updateGauge(name string, strValue string) error {
 		return err
 	}
 
-	s.repo.Save(&models.Metrics{ID: name, MType: models.Gauge, Value: &value})
-	logger.Logger.Debug(fmt.Sprintf("Gauge value %s updated, new value: %.2f", name, value))
+	err = s.repo.Save(&models.Metrics{ID: name, MType: models.Gauge, Value: &value})
+	if err != nil {
+		return err
+	}
+	s.logger.Debug("Metric updated", slog.String("mType", models.Gauge), slog.String("ID", name),
+		slog.Float64("value", value))
 	return nil
 }
 

@@ -2,22 +2,29 @@ package agent
 
 import (
 	"fmt"
+	"log/slog"
+	"math/rand/v2"
 	"reflect"
 	"runtime"
 	"strings"
 
-	"github.com/HappyFatPug/go-course-metrics/internal/logger"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
-	"github.com/HappyFatPug/go-course-metrics/internal/repository"
 )
 
-type AgentService struct {
-	repo                 repository.MetricsRepository
-	client               *Client
-	memStatNamesToUpdate string
+type MetricsRepository interface {
+	Find(mType, name string) (*models.Metrics, bool)
+	Save(m *models.Metrics) error
+	GetAll() []models.Metrics
 }
 
-func NewAgentService(repo repository.MetricsRepository, client *Client) *AgentService {
+type AgentService struct {
+	repo                 MetricsRepository
+	client               *Client
+	memStatNamesToUpdate string
+	logger               *slog.Logger
+}
+
+func NewAgentService(repo MetricsRepository, client *Client, logger *slog.Logger) *AgentService {
 	return &AgentService{
 		repo:   repo,
 		client: client,
@@ -25,6 +32,7 @@ func NewAgentService(repo repository.MetricsRepository, client *Client) *AgentSe
 		HeapInuse HeapObjects HeapReleased HeapSys LastGC Lookups MCacheInuse MCacheSys 
 		MSpanInuse MSpanSys Mallocs NextGC NumForcedGC NumGC OtherSys PauseTotalNs StackInuse 
 		StackSys Sys TotalAlloc`,
+		logger: logger,
 	}
 }
 
@@ -37,21 +45,36 @@ func (s *AgentService) saveGauge(name string, value float64) error {
 	return s.repo.Save(&models.Metrics{ID: name, MType: models.Gauge, Value: &value})
 }
 
-func (s *AgentService) UpdateAll(pollCount int64, randomValue float64) error {
+func (s *AgentService) UpdateAll() {
 	if err := s.updateMemStatMetrics(); err != nil {
-		return err
+		s.logger.Error(err.Error())
 	}
 
-	err := s.saveCounter("PollCount", pollCount)
+	err := s.incCounter("PollCount")
 	if err != nil {
-		return err
+		s.logger.Error(err.Error())
 	}
-	err = s.saveGauge("RandomValue", randomValue)
+	err = s.saveGauge("RandomValue", rand.Float64())
 	if err != nil {
-		return err
+		s.logger.Error(err.Error())
+	}
+}
+
+func (s *AgentService) incCounter(name string) error {
+	metric, ok := s.readMetrics(models.Counter, name)
+	if !ok {
+		val := float64(0)
+		metric = &models.Metrics{
+			MType: models.Counter,
+			ID:    name,
+			Value: &val,
+		}
 	}
 
-	return nil
+	pollCount := *metric.Value + 1
+	metric.Value = &pollCount
+
+	return s.saveMetrics(metric)
 }
 
 func (s *AgentService) updateMemStatMetrics() error {
@@ -77,6 +100,7 @@ func (s *AgentService) updateMemStatMetrics() error {
 			value = float64(field.Int())
 		}
 		err := s.saveGauge(fieldName, value)
+		s.logger.Debug("MemStat gauge saved", slog.String("ID", fieldName), slog.Float64("value", value))
 		if err != nil {
 			return err
 		}
@@ -88,16 +112,19 @@ func (s *AgentService) updateMemStatMetrics() error {
 func (s *AgentService) SendAll() {
 	err := s.SendMemStatMetrics()
 	if err != nil {
-		logger.Logger.Error(err.Error())
+		s.logger.Error(err.Error())
+	}
+
+	err = s.sendMetrics(models.Gauge, "RandomValue")
+	if err != nil {
+		s.logger.Error(err.Error())
 	}
 
 	err = s.sendMetrics(models.Counter, "PollCount")
 	if err != nil {
-		logger.Logger.Error(err.Error())
-	}
-	err = s.sendMetrics(models.Gauge, "RandomValue")
-	if err != nil {
-		logger.Logger.Error(err.Error())
+		s.logger.Error(err.Error())
+	} else {
+		s.saveCounter("PollCount", 0)
 	}
 }
 
@@ -105,7 +132,7 @@ func (s *AgentService) SendMemStatMetrics() error {
 	for _, mName := range strings.Fields(s.memStatNamesToUpdate) {
 		err := s.sendMetrics(models.Gauge, mName)
 		if err != nil {
-			logger.Logger.Error(err.Error())
+			s.logger.Error(err.Error())
 		}
 	}
 	return nil
@@ -114,7 +141,7 @@ func (s *AgentService) SendMemStatMetrics() error {
 func (s *AgentService) sendMetrics(mType, name string) error {
 	m, ok := s.readMetrics(mType, name)
 	if !ok {
-		logger.Logger.Warn(fmt.Sprintf("Cannot read metrics: %s", name))
+		s.logger.Warn("Cannot read metrics", slog.String("ID", name))
 		return nil
 	}
 	return s.client.postMetrics(m)
@@ -122,4 +149,8 @@ func (s *AgentService) sendMetrics(mType, name string) error {
 
 func (s *AgentService) readMetrics(mType string, name string) (*models.Metrics, bool) {
 	return s.repo.Find(mType, name)
+}
+
+func (s *AgentService) saveMetrics(m *models.Metrics) error {
+	return s.repo.Save(m)
 }

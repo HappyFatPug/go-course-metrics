@@ -4,10 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"time"
 
-	"github.com/HappyFatPug/go-course-metrics/internal/logger"
+	"github.com/HappyFatPug/go-course-metrics/internal/config"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
 )
 
@@ -16,16 +17,18 @@ type Client struct {
 	scheme string
 	host   string
 	port   uint
+	logger *slog.Logger
 }
 
-func NewClient(scheme, host string, port uint) *Client {
+func NewClient(config *config.AgentClientConfig, logger *slog.Logger) *Client {
 	return &Client{
-		scheme: scheme,
-		host:   host,
-		port:   port,
+		scheme: config.Scheme,
+		host:   config.NetAddr.Host,
+		port:   uint(config.NetAddr.Port),
 		c: &http.Client{
 			Timeout: 1 * time.Second,
 		},
+		logger: logger,
 	}
 }
 
@@ -43,7 +46,7 @@ func (client *Client) postMetrics(m *models.Metrics) error {
 
 	endpoint = fmt.Sprintf("%s://%s:%d%s", client.scheme, client.host, client.port, urlPath)
 
-	logger.Logger.Debug(fmt.Sprintf("Calling POST: %s", endpoint))
+	client.logger.Debug("Calling POST", slog.String("URL", endpoint))
 	response, err := client.c.Post(endpoint, "text/plain", nil)
 	if err != nil {
 		return err
@@ -51,7 +54,7 @@ func (client *Client) postMetrics(m *models.Metrics) error {
 
 	defer response.Body.Close()
 	io.Copy(io.Discard, response.Body)
-	logger.Logger.Debug(fmt.Sprintf("Metrics %s sent, code received: %d", m.ID, response.StatusCode))
+	client.logger.Debug("Metrics sent", slog.String("ID", m.ID), slog.Int("code", response.StatusCode))
 
 	return nil
 }

@@ -51,7 +51,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 			app := app.ConfigureTestApp(false)
 
 			router := mux.NewRouter()
-			router.HandleFunc("/update/{type}/{name}/{value}", UpdateMetric(app)).Methods("POST")
+			router.HandleFunc("/update/{type}/{name}/{value}", UpdateMetric(app.Service, app.Logger)).Methods("POST")
 
 			request := httptest.NewRequest(test.method, test.url, nil)
 			w := httptest.NewRecorder()
@@ -129,11 +129,10 @@ func TestGetMetric(t *testing.T) {
 
 			for _, m := range initialMetrics {
 				assert.NoError(t, app.Service.UpdateMetric(m.mType, m.ID, m.Value))
-				
 			}
 
 			router := mux.NewRouter()
-			router.HandleFunc("/value/{type}/{name}", GetMetric(app)).Methods("GET")
+			router.HandleFunc("/value/{type}/{name}", GetMetric(app.Service)).Methods("GET")
 
 			request := httptest.NewRequest(test.method, test.url, nil)
 			w := httptest.NewRecorder()
@@ -178,7 +177,7 @@ func TestGetAll(t *testing.T) {
 	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/", GetAll(app)).Methods("GET")
+	router.HandleFunc("/", GetAll(app.Service, app.Logger)).Methods("GET")
 
 	request := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -194,8 +193,6 @@ func TestGetAll(t *testing.T) {
 
 	bodyStr := string(body)
 	bodyStr = strings.ReplaceAll(bodyStr, " ", "")
-	// assert.Contains(t, bodyStr, "<td>testCounter</td>\n<td>123</td>")
-	// assert.Contains(t, bodyStr, "<td>testGauge</td>\n<td>0.321</td>")
 	assert.Contains(t, bodyStr, "<span>testCounter</span>:<span>123</span>")
 	assert.Contains(t, bodyStr, "<span>testGauge</span>:<span>0.321</span>")
 }

@@ -15,15 +15,18 @@ type App struct {
 }
 
 func ConfigureTestApp(debug bool) *App {
-	memRepo := repository.NewInMemMetricsRepository()
 	var lLevel slog.Leveler = slog.LevelInfo
 	if debug {
 		lLevel = slog.LevelDebug
 	}
+	logger := logger.ConfigureLogger(lLevel)
+
+	memRepo := repository.NewInMemMetricsRepository()
+
 
 	return &App{
 		Debug:   debug,
-		Service: service.NewMetricsService(memRepo),
-		Logger:  logger.ConfigureLogger(lLevel),
+		Service: service.NewMetricsService(memRepo, logger),
+		Logger:  logger,
 	}
 }

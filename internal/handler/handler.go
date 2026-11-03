@@ -3,30 +3,35 @@ package handler
 import (
 	"bytes"
 	"html/template"
+	"log/slog"
 	"net/http"
 
-	"github.com/HappyFatPug/go-course-metrics/internal/app"
-	"github.com/HappyFatPug/go-course-metrics/internal/logger"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
 	"github.com/gorilla/mux"
 )
 
-// type Service interface {
-// 	UpdateMetric(mType, mName, mValue string) error
-// 	GetMetric(mType, name string) (*models.Metrics, bool)
-// 	GetAllMetrics() []models.Metrics
-// }
+type Service interface {
+	UpdateMetric(mType, mName, mValue string) error
+	GetMetric(mType, name string) (*models.Metrics, bool)
+	GetAllMetrics() []models.Metrics
+}
 
-func UpdateMetric(app *app.App) http.HandlerFunc {
+func UpdateMetric(srv Service, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		metricType := vars["type"]
 		metricName := vars["name"]
 		metricValue := vars["value"]
 
-		err := app.Service.UpdateMetric(metricType, metricName, metricValue)
+		if metricType != models.Counter && metricType != models.Gauge {
+			http.Error(w, "Metric type should be counter/gauge", http.StatusBadRequest)
+			return
+		}
+
+		err := srv.UpdateMetric(metricType, metricName, metricValue)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			logger.Warn(err.Error())
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 
@@ -35,13 +40,13 @@ func UpdateMetric(app *app.App) http.HandlerFunc {
 	}
 }
 
-func GetMetric(app *app.App) http.HandlerFunc {
+func GetMetric(srv Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		metricType := vars["type"]
 		metricName := vars["name"]
 
-		m, ok := app.Service.GetMetric(metricType, metricName)
+		m, ok := srv.GetMetric(metricType, metricName)
 		if !ok {
 			http.NotFound(w, r)
 			return
@@ -53,50 +58,26 @@ func GetMetric(app *app.App) http.HandlerFunc {
 	}
 }
 
-// type allMetricsTeplateItem struct {
-// 	Name, Value string
-// }
+func GetAll(srv Service, logger *slog.Logger) http.HandlerFunc {
+	tmpl := template.Must(template.New("getAllTemplate").Parse(`<!DOCTYPE html>
+		<html lang="en">
+			<head>
+				<meta charset="UTF-8">
+			</head>
+			<body>
+			{{range .Counters}}
+				<div>
+					<span>{{.Name}}</span>: <span>{{.Value}}</span>
+				</div>
+			{{end}}
+			{{range .Gauges}}
+				<div>
+					<span>{{.Name}}</span>: <span>{{.Value}}</span>
+				</div>
+			{{end}}   
+			</body>
+		</html>`))
 
-// type allMetricsTemplateData struct {
-// 	Counters, Gauges []allMetricsTeplateItem
-// }
-
-// var allMetricsT *template.Template
-
-// func init() {
-// 	var err error
-// 	allMetricsT, err = template.ParseFiles("../../web/templates/all-metrics.html")
-// 	if err != nil {
-// 		log.Fatal(err.Error())
-// 	}
-// }
-
-// func GetAll(app *app.App) http.HandlerFunc {
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		tData := allMetricsTemplateData{}
-// 		for _, m := range app.Service.GetAllMetrics() {
-// 			switch m.MType {
-// 			case models.Counter:
-// 				tData.Counters = append(tData.Counters, allMetricsTeplateItem{Name: m.ID, Value: m.ValueStr()})
-// 			case models.Gauge:
-// 				tData.Gauges = append(tData.Gauges, allMetricsTeplateItem{Name: m.ID, Value: m.ValueStr()})
-// 			}
-// 		}
-
-// 		var body bytes.Buffer
-// 		err := allMetricsT.Execute(&body, tData)
-// 		if err != nil {
-// 			logger.Logger.Warn(err.Error())
-// 			http.Error(w, err.Error(), http.StatusInternalServerError)
-// 			return
-// 		}
-
-// 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-// 		body.WriteTo(w)
-// 	}
-// }
-
-func GetAll(app *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		type allMetricsTeplateItem struct {
 			Name, Value string
@@ -106,27 +87,8 @@ func GetAll(app *app.App) http.HandlerFunc {
 			Counters, Gauges []allMetricsTeplateItem
 		}
 
-		tmpl := template.Must(template.New("getAllTemplate").Parse(`<!DOCTYPE html>
-			<html lang="en">
-				<head>
-					<meta charset="UTF-8">
-				</head>
-				<body>
-				{{range .Counters}}
-					<div>
-						<span>{{.Name}}</span>: <span>{{.Value}}</span>
-					</div>
-				{{end}}
-				{{range .Gauges}}
-					<div>
-						<span>{{.Name}}</span>: <span>{{.Value}}</span>
-					</div>
-				{{end}}   
-				</body>
-			</html>`))
-
 		tData := allMetricsTemplateData{}
-		for _, m := range app.Service.GetAllMetrics() {
+		for _, m := range srv.GetAllMetrics() {
 			switch m.MType {
 			case models.Counter:
 				tData.Counters = append(tData.Counters, allMetricsTeplateItem{Name: m.ID, Value: m.ValueStr()})
@@ -138,8 +100,8 @@ func GetAll(app *app.App) http.HandlerFunc {
 		var body bytes.Buffer
 		err := tmpl.Execute(&body, tData)
 		if err != nil {
-			logger.Logger.Warn(err.Error())
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			logger.Warn(err.Error())
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 

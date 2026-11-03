@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -10,30 +10,31 @@ import (
 	"time"
 
 	"github.com/HappyFatPug/go-course-metrics/internal/app"
+	"github.com/HappyFatPug/go-course-metrics/internal/config"
 	"github.com/HappyFatPug/go-course-metrics/internal/handler"
 	"github.com/gorilla/mux"
 )
 
 func main() {
-	parseFlags()
+	config := config.ParseServerFlags()
 
-	app := app.ConfigureTestApp(config.debug)
+	app := app.ConfigureTestApp(config.Debug)
 
 	router := mux.NewRouter()
-	router.HandleFunc("/", handler.GetAll(app)).Methods("GET")
-	router.HandleFunc("/update/{type}/{name}/{value}", handler.UpdateMetric(app)).Methods("POST")
-	router.HandleFunc("/value/{type}/{name}", handler.GetMetric(app)).Methods("GET")
+	router.HandleFunc("/", handler.GetAll(app.Service, app.Logger)).Methods("GET")
+	router.HandleFunc("/update/{type}/{name}/{value}", handler.UpdateMetric(app.Service, app.Logger)).Methods("POST")
+	router.HandleFunc("/value/{type}/{name}", handler.GetMetric(app.Service)).Methods("GET")
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	server := http.Server{
-		Addr:    config.netAddr.String(),
+		Addr:    config.NetAddr.String(),
 		Handler: router,
 	}
 
 	go func() {
-		app.Logger.Info(fmt.Sprintf("Listennig %s", config.netAddr.String()))
+		app.Logger.Info("Starting server", slog.String("URL", config.NetAddr.String()))
 		err := server.ListenAndServe()
 		if err != nil {
 			app.Logger.Error(err.Error())
@@ -46,7 +47,7 @@ func main() {
 	defer cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		app.Logger.Error(fmt.Sprintf("Server forced to shutdown: %v", err))
+		app.Logger.Error("Server forced to shutdown", slog.String("error", err.Error()))
 	} else {
 		app.Logger.Warn("Server stopped")
 	}
