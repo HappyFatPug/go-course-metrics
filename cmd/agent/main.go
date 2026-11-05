@@ -13,9 +13,6 @@ import (
 	"github.com/HappyFatPug/go-course-metrics/internal/config"
 )
 
-var PollCount int64 = 0
-var RandomValue float64
-
 func main() {
 	config := config.ParseAgentFlags()
 	app := agent.ConfigureTestApp(config)

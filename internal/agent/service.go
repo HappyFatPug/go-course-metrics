@@ -71,8 +71,8 @@ func (s *AgentService) incCounter(name string) error {
 		}
 	}
 
-	pollCount := *metric.Value + 1
-	metric.Value = &pollCount
+	value := *metric.Value + 1
+	metric.Value = &value
 
 	return s.saveMetrics(metric)
 }
@@ -100,10 +100,10 @@ func (s *AgentService) updateMemStatMetrics() error {
 			value = float64(field.Int())
 		}
 		err := s.saveGauge(fieldName, value)
-		s.logger.Debug("MemStat gauge saved", slog.String("ID", fieldName), slog.Float64("value", value))
 		if err != nil {
 			return err
 		}
+		s.logger.Debug("MemStat gauge saved", slog.String("ID", fieldName), slog.Float64("value", value))
 	}
 
 	return nil

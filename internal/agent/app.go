@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -19,8 +18,6 @@ type App struct {
 }
 
 func ConfigureTestApp(config *config.AgentConfig) *App {
-	fmt.Println(config.ClientConfig.NetAddr.String())
-
 	var lLevel slog.Leveler = slog.LevelInfo
 	if config.Debug {
 		lLevel = slog.LevelDebug

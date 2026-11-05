@@ -30,7 +30,7 @@ func UpdateMetric(srv Service, logger *slog.Logger) http.HandlerFunc {
 
 		err := srv.UpdateMetric(metricType, metricName, metricValue)
 		if err != nil {
-			logger.Warn(err.Error())
+			logger.Debug(err.Error())
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
