@@ -1,5 +1,7 @@
 package models
 
+import "strconv"
+
 const (
 	Counter = "counter"
 	Gauge   = "gauge"
@@ -16,4 +18,8 @@ type Metrics struct {
 	Delta *int64   `json:"delta,omitempty"`
 	Value *float64 `json:"value,omitempty"`
 	Hash  string   `json:"hash,omitempty"`
+}
+
+func (m *Metrics) ValueStr() string {
+	return strconv.FormatFloat(*m.Value, 'f', -1, 64)
 }
