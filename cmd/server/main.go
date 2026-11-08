@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	config := config.ParseServerFlags()
+	config := config.GetServerConfig()
 
 	app := app.ConfigureTestApp(config.Debug)
 

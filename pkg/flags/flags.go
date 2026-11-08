@@ -30,3 +30,7 @@ func (n *NetAddress) Set(flagVal string) error {
 	n.Port = uint16(port)
 	return nil
 }
+
+func (n *NetAddress) UnmarshalText(text []byte) error {
+	return n.Set(string(text))
+}
