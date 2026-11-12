@@ -317,7 +317,7 @@ func TestGetMetricJSON(t *testing.T) {
 		method    string
 		url       string
 		wantCode  int
-		mId       string
+		mID       string
 		mType     string
 		wantValue float64
 	}{
@@ -326,7 +326,7 @@ func TestGetMetricJSON(t *testing.T) {
 			method:    http.MethodGet,
 			url:       "/value",
 			wantCode:  http.StatusOK,
-			mId:       "testCounter",
+			mID:       "testCounter",
 			mType:     models.Counter,
 			wantValue: 123,
 		},
@@ -335,7 +335,7 @@ func TestGetMetricJSON(t *testing.T) {
 			method:    http.MethodGet,
 			url:       "/value",
 			wantCode:  http.StatusOK,
-			mId:       "testGauge",
+			mID:       "testGauge",
 			mType:     models.Gauge,
 			wantValue: 0.321,
 		},
@@ -350,7 +350,7 @@ func TestGetMetricJSON(t *testing.T) {
 			method:   http.MethodGet,
 			url:      "/value",
 			wantCode: http.StatusNotFound,
-			mId:      "testCounter1",
+			mID:      "testCounter1",
 			mType:    models.Counter,
 		},
 		{
@@ -376,7 +376,7 @@ func TestGetMetricJSON(t *testing.T) {
 				ID    string `json:"id"`
 				MType string `json:"type"`
 			}{
-				ID:    test.mId,
+				ID:    test.mID,
 				MType: test.mType,
 			}
 			body, err := json.Marshal(&requestBodyM)

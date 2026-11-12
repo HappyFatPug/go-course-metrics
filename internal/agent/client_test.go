@@ -31,7 +31,7 @@ func TestPostMetrics(t *testing.T) {
 				MType: models.Counter,
 				Value: &counterValue,
 			},
-			wantURLPath: "/update",
+			wantURLPath: "/update/",
 			wantError:   false,
 		},
 		{
@@ -41,7 +41,7 @@ func TestPostMetrics(t *testing.T) {
 				MType: models.Gauge,
 				Value: &gaugeValue,
 			},
-			wantURLPath: "/update",
+			wantURLPath: "/update/",
 			wantError:   false,
 		},
 	}

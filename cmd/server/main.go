@@ -22,42 +22,27 @@ func main() {
 	app := app.ConfigureTestApp(config.Debug)
 
 	router := mux.NewRouter()
+
+	router.HandleFunc("/", handler.GetAll(app.Service, app.Logger)).Methods("GET")
+
+	router.HandleFunc("/update/{type}/{name}/{value}", handler.UpdateMetric(app.Service, app.Logger)).Methods("POST")
 	router.HandleFunc(
-		"/", middleware.WithLogging(handler.GetAll(app.Service, app.Logger), app.Logger),
-	).Methods("GET")
-	router.HandleFunc(
-		"/update/{type}/{name}/{value}", middleware.WithLogging(handler.UpdateMetric(app.Service, app.Logger), app.Logger),
+		"/update/",
+		middleware.JSONHandler(handler.UpdateMetricJSON(app.Service, app.Logger), app.Logger),
 	).Methods("POST")
+
+	router.HandleFunc("/value/{type}/{name}", handler.GetMetric(app.Service)).Methods("GET")
 	router.HandleFunc(
-		"/update",
-		middleware.WithLogging(
-			middleware.JSONHandler(
-				handler.UpdateMetricJSON(app.Service, app.Logger),
-				app.Logger,
-			),
-			app.Logger,
-		),
+		"/value/",
+		middleware.JSONHandler(handler.GetMetricJSON(app.Service, app.Logger), app.Logger),
 	).Methods("POST")
-	router.HandleFunc(
-		"/value/{type}/{name}", middleware.WithLogging(handler.GetMetric(app.Service), app.Logger),
-	).Methods("GET")
-	router.HandleFunc(
-		"/value",
-		middleware.WithLogging(
-			middleware.JSONHandler(
-				handler.GetMetricJSON(app.Service, app.Logger),
-				app.Logger,
-			),
-			app.Logger,
-		),
-	).Methods("GET")
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	server := http.Server{
 		Addr:    config.NetAddr.String(),
-		Handler: router,
+		Handler: middleware.WithLogging(app.Logger)(router),
 	}
 
 	go func() {

@@ -7,36 +7,39 @@ import (
 	"time"
 
 	appErrors "github.com/HappyFatPug/go-course-metrics/internal/errors"
+	"github.com/gorilla/mux"
 )
 
-func WithLogging(h http.Handler, logger *slog.Logger) http.HandlerFunc {
-	logFn := func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
+func WithLogging(logger *slog.Logger) mux.MiddlewareFunc {
+	return func(h http.Handler) http.Handler {
+		logFn := func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
 
-		responseData := &responseData{
-			status: 0,
-			size:   0,
+			responseData := &responseData{
+				status: 0,
+				size:   0,
+			}
+			lw := loggingResponseWriter{
+				ResponseWriter: w,
+				responseData:   responseData,
+			}
+
+			h.ServeHTTP(&lw, r)
+
+			duration := time.Since(start)
+
+			logger.Info(
+				"http.Request",
+				slog.String("uri", r.RequestURI),
+				slog.String("method", r.Method),
+				slog.Int("status", responseData.status),
+				slog.Duration("duration", duration),
+				slog.Int("size", responseData.size),
+			)
 		}
-		lw := loggingResponseWriter{
-			ResponseWriter: w,
-			responseData:   responseData,
-		}
 
-		h.ServeHTTP(&lw, r)
-
-		duration := time.Since(start)
-
-		logger.Info(
-			"http.Request",
-			slog.String("uri", r.RequestURI),
-			slog.String("method", r.Method),
-			slog.Int("status", responseData.status),
-			slog.Duration("duration", duration),
-			slog.Int("size", responseData.size),
-		)
+		return http.HandlerFunc(logFn)
 	}
-
-	return logFn
 }
 
 func JSONHandler(h http.Handler, logger *slog.Logger) http.HandlerFunc {

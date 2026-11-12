@@ -20,7 +20,7 @@ func TestLoggingMiddleware(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	server := httptest.NewServer(http.HandlerFunc(WithLogging(hfunc, logger)))
+	server := httptest.NewServer(WithLogging(logger)(hfunc))
 	defer server.Close()
 
 	resp, err := http.Get(server.URL)
@@ -33,7 +33,7 @@ func TestLoggingMiddleware(t *testing.T) {
 		Time     string `json:"time"`
 		Level    string `json:"level"`
 		Msg      string `json:"msg"`
-		Uri      string `json:"uri"`
+		URI      string `json:"uri"`
 		Method   string `json:"method"`
 		Status   int    `json:"status"`
 		Duration int    `json:"duration"`

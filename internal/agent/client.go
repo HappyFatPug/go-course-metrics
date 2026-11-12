@@ -34,7 +34,7 @@ func NewClient(config *config.AgentClientConfig, logger *slog.Logger) *Client {
 }
 
 func (client *Client) postMetrics(m *models.Metrics) error {
-	endpoint := fmt.Sprintf("%s://%s:%d/update", client.scheme, client.host, client.port)
+	endpoint := fmt.Sprintf("%s://%s:%d/update/", client.scheme, client.host, client.port)
 
 	body, err := json.Marshal(m)
 	if err != nil {
@@ -48,7 +48,11 @@ func (client *Client) postMetrics(m *models.Metrics) error {
 
 	defer response.Body.Close()
 	io.Copy(io.Discard, response.Body)
-	client.logger.Debug("Metrics sent", slog.String("ID", m.ID), slog.Int("code", response.StatusCode))
+	if response.StatusCode != http.StatusOK {
+		client.logger.Warn("Failed posting metrics", slog.String("URL", endpoint), slog.Int("code", response.StatusCode))
+	} else {
+		client.logger.Debug("Metrics sent", slog.String("ID", m.ID), slog.Int("code", response.StatusCode))
+	}
 
 	return nil
 }
