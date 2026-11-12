@@ -29,7 +29,27 @@ func main() {
 		"/update/{type}/{name}/{value}", middleware.WithLogging(handler.UpdateMetric(app.Service, app.Logger), app.Logger),
 	).Methods("POST")
 	router.HandleFunc(
+		"/update",
+		middleware.WithLogging(
+			middleware.JSONHandler(
+				handler.UpdateMetricJSON(app.Service, app.Logger),
+				app.Logger,
+			),
+			app.Logger,
+		),
+	).Methods("POST")
+	router.HandleFunc(
 		"/value/{type}/{name}", middleware.WithLogging(handler.GetMetric(app.Service), app.Logger),
+	).Methods("GET")
+	router.HandleFunc(
+		"/value",
+		middleware.WithLogging(
+			middleware.JSONHandler(
+				handler.GetMetricJSON(app.Service, app.Logger),
+				app.Logger,
+			),
+			app.Logger,
+		),
 	).Methods("GET")
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

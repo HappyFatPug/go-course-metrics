@@ -1,7 +1,8 @@
 package agent
 
 import (
-	"errors"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -33,21 +34,14 @@ func NewClient(config *config.AgentClientConfig, logger *slog.Logger) *Client {
 }
 
 func (client *Client) postMetrics(m *models.Metrics) error {
-	var urlPath, endpoint string
+	endpoint := fmt.Sprintf("%s://%s:%d/update", client.scheme, client.host, client.port)
 
-	switch m.MType {
-	case models.Counter:
-		urlPath = fmt.Sprintf("/update/counter/%s/%s", m.ID, m.ValueStr())
-	case models.Gauge:
-		urlPath = fmt.Sprintf("/update/gauge/%s/%s", m.ID, m.ValueStr())
-	default:
-		return errors.New("wrong type")
+	body, err := json.Marshal(m)
+	if err != nil {
+		return err
 	}
 
-	endpoint = fmt.Sprintf("%s://%s:%d%s", client.scheme, client.host, client.port, urlPath)
-
-	client.logger.Debug("Calling POST", slog.String("URL", endpoint))
-	response, err := client.c.Post(endpoint, "text/plain", nil)
+	response, err := client.c.Post(endpoint, "application/json", bytes.NewReader(body))
 	if err != nil {
 		return err
 	}

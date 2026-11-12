@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -30,7 +31,7 @@ func TestPostMetrics(t *testing.T) {
 				MType: models.Counter,
 				Value: &counterValue,
 			},
-			wantURLPath: "/update/counter/test counter/11",
+			wantURLPath: "/update",
 			wantError:   false,
 		},
 		{
@@ -40,18 +41,8 @@ func TestPostMetrics(t *testing.T) {
 				MType: models.Gauge,
 				Value: &gaugeValue,
 			},
-			wantURLPath: "/update/gauge/test gauge/0.11",
+			wantURLPath: "/update",
 			wantError:   false,
-		},
-		{
-			name: "wrong type",
-			m: &models.Metrics{
-				ID:    "test counter",
-				MType: "models.Counter",
-				Value: &counterValue,
-			},
-			wantURLPath: "",
-			wantError:   true,
 		},
 	}
 
@@ -60,7 +51,21 @@ func TestPostMetrics(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Exactly(t, test.wantURLPath, r.URL.Path)
 
-				w.Header().Set("content-type", "text/plain")
+				dec := json.NewDecoder(r.Body)
+				var requestMetric models.Metrics
+
+				err := dec.Decode(&requestMetric)
+				if test.wantError {
+					assert.Error(t, err)
+				} else {
+					assert.NoError(t, err)
+				}
+
+				assert.Equal(t, test.m.ID, requestMetric.ID)
+				assert.Equal(t, test.m.MType, requestMetric.MType)
+				assert.Equal(t, *test.m.Value, *requestMetric.Value)
+
+				w.Header().Set("content-type", "application/json")
 				w.WriteHeader(http.StatusOK)
 			}))
 			defer server.Close()

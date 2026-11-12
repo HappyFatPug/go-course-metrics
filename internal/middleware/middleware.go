@@ -1,12 +1,15 @@
 package middleware
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"time"
+
+	appErrors "github.com/HappyFatPug/go-course-metrics/internal/errors"
 )
 
-func WithLogging(h http.Handler, logger *slog.Logger) func(http.ResponseWriter, *http.Request) {
+func WithLogging(h http.Handler, logger *slog.Logger) http.HandlerFunc {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
@@ -34,6 +37,31 @@ func WithLogging(h http.Handler, logger *slog.Logger) func(http.ResponseWriter, 
 	}
 
 	return logFn
+}
+
+func JSONHandler(h http.Handler, logger *slog.Logger) http.HandlerFunc {
+	checkJSONFn := func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("content-type") != "application/json" {
+			resp := appErrors.JSONError{
+				Code:    http.StatusUnsupportedMediaType,
+				Message: http.StatusText(http.StatusUnsupportedMediaType),
+			}
+
+			w.Header().Set("content-type", "application/json")
+			w.WriteHeader(http.StatusUnsupportedMediaType)
+			enc := json.NewEncoder(w)
+			if err := enc.Encode(resp); err != nil {
+				logger.Debug(err.Error())
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
+			return
+		}
+
+		h.ServeHTTP(w, r)
+	}
+
+	return checkJSONFn
 }
 
 type (

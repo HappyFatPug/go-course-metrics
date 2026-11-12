@@ -2,10 +2,13 @@ package handler
 
 import (
 	"bytes"
+	"encoding/json"
 	"html/template"
 	"log/slog"
 	"net/http"
+	"strconv"
 
+	appErrors "github.com/HappyFatPug/go-course-metrics/internal/errors"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
 	"github.com/gorilla/mux"
 )
@@ -40,6 +43,34 @@ func UpdateMetric(srv Service, logger *slog.Logger) http.HandlerFunc {
 	}
 }
 
+func UpdateMetricJSON(srv Service, logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "application/json")
+
+		var m models.Metrics
+		dec := json.NewDecoder(r.Body)
+		if err := dec.Decode(&m); err != nil {
+			logger.Debug("JSON decode error", slog.String("msg", err.Error()))
+			JSONErrorRequestHelper(w, r, logger, http.StatusBadRequest)
+			return
+		}
+
+		if m.ID == "" || m.MType == "" || m.Value == nil {
+			JSONErrorRequestHelper(w, r, logger, http.StatusBadRequest)
+			return
+		}
+
+		err := srv.UpdateMetric(m.MType, m.ID, strconv.FormatFloat(*m.Value, 'f', -1, 64))
+		if err != nil {
+			logger.Debug("UpdateMetric error", slog.String("msg", err.Error()))
+			JSONErrorRequestHelper(w, r, logger, http.StatusBadRequest)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
 func GetMetric(srv Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
@@ -55,6 +86,37 @@ func GetMetric(srv Service) http.HandlerFunc {
 		w.Header().Set("content-type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(m.ValueStr()))
+	}
+}
+
+func GetMetricJSON(srv Service, logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		enc := json.NewEncoder(w)
+		w.Header().Set("content-type", "application/json")
+
+		var requestM models.Metrics
+		dec := json.NewDecoder(r.Body)
+		if err := dec.Decode(&requestM); err != nil {
+			logger.Debug("JSON decode error", slog.String("msg", err.Error()))
+			JSONErrorRequestHelper(w, r, logger, http.StatusBadRequest)
+			return
+		}
+
+		if requestM.ID == "" || requestM.MType == "" {
+			JSONErrorRequestHelper(w, r, logger, http.StatusBadRequest)
+			return
+		}
+
+		m, ok := srv.GetMetric(requestM.MType, requestM.ID)
+		if !ok {
+			JSONErrorRequestHelper(w, r, logger, http.StatusNotFound)
+			return
+		}
+
+		if err := enc.Encode(&m); err != nil {
+			logger.Error("JSON encode error", slog.String("msg", err.Error()))
+			JSONErrorRequestHelper(w, r, logger, http.StatusInternalServerError)
+		}
 	}
 }
 
@@ -107,5 +169,19 @@ func GetAll(srv Service, logger *slog.Logger) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		body.WriteTo(w)
+	}
+}
+
+func JSONErrorRequestHelper(w http.ResponseWriter, r *http.Request, logger *slog.Logger, code int) {
+	enc := json.NewEncoder(w)
+	resp := appErrors.JSONError{
+		Code:    code,
+		Message: http.StatusText(code),
+	}
+
+	w.WriteHeader(code)
+	if err := enc.Encode(resp); err != nil {
+		logger.Error("JSON encode error", slog.String("msg", err.Error()))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
