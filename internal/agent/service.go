@@ -63,16 +63,15 @@ func (s *AgentService) UpdateAll() {
 func (s *AgentService) incCounter(name string) error {
 	metric, ok := s.readMetrics(models.Counter, name)
 	if !ok {
-		val := float64(0)
+		val := int64(0)
 		metric = &models.Metrics{
 			MType: models.Counter,
 			ID:    name,
-			Value: &val,
+			Delta: &val,
 		}
 	}
 
-	value := *metric.Value + 1
-	metric.Value = &value
+	*metric.Delta += 1
 
 	return s.saveMetrics(metric)
 }

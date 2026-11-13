@@ -27,9 +27,8 @@ func (repo *InMemMetricsRepository) Find(mType, name string) (*models.Metrics, b
 		repo.counterMu.Lock()
 		defer repo.counterMu.Unlock()
 		value, ok := repo.counterBuf[name]
-		valueFloat := float64(value)
 		if ok {
-			return &models.Metrics{ID: name, MType: models.Counter, Value: &valueFloat}, ok
+			return &models.Metrics{ID: name, MType: models.Counter, Delta: &value}, ok
 		}
 	case models.Gauge:
 		repo.gaugeMu.Lock()
@@ -43,14 +42,15 @@ func (repo *InMemMetricsRepository) Find(mType, name string) (*models.Metrics, b
 }
 
 func (repo *InMemMetricsRepository) Save(m *models.Metrics) error {
-	if m.Value == nil {
+	if m.Value == nil && m.MType == models.Gauge ||
+		m.Delta == nil && m.MType == models.Counter {
 		return errors.New("value is undefined")
 	}
 	switch m.MType {
 	case models.Counter:
 		repo.counterMu.Lock()
 		defer repo.counterMu.Unlock()
-		repo.counterBuf[m.ID] = int64(*m.Value)
+		repo.counterBuf[m.ID] = *m.Delta
 
 	case models.Gauge:
 		repo.gaugeMu.Lock()
@@ -69,8 +69,7 @@ func (repo *InMemMetricsRepository) GetAll() []models.Metrics {
 	repo.counterMu.Lock()
 	defer repo.counterMu.Unlock()
 	for cName, cValue := range repo.counterBuf {
-		value := float64(cValue)
-		metrics = append(metrics, models.Metrics{ID: cName, MType: models.Counter, Value: &value})
+		metrics = append(metrics, models.Metrics{ID: cName, MType: models.Counter, Delta: &cValue})
 	}
 	repo.gaugeMu.Lock()
 	defer repo.gaugeMu.Unlock()
