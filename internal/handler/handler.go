@@ -2,16 +2,19 @@ package handler
 
 import (
 	"bytes"
+	"encoding/json"
 	"html/template"
 	"log/slog"
 	"net/http"
 
+	appErrors "github.com/HappyFatPug/go-course-metrics/internal/errors"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
 	"github.com/gorilla/mux"
 )
 
 type Service interface {
-	UpdateMetric(mType, mName, mValue string) error
+	UpdateMetricRaw(mType, mName, mValue string) error
+	UpdateMetric(*models.Metrics) error
 	GetMetric(mType, name string) (*models.Metrics, bool)
 	GetAllMetrics() []models.Metrics
 }
@@ -28,7 +31,7 @@ func UpdateMetric(srv Service, logger *slog.Logger) http.HandlerFunc {
 			return
 		}
 
-		err := srv.UpdateMetric(metricType, metricName, metricValue)
+		err := srv.UpdateMetricRaw(metricType, metricName, metricValue)
 		if err != nil {
 			logger.Debug(err.Error())
 			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -37,6 +40,42 @@ func UpdateMetric(srv Service, logger *slog.Logger) http.HandlerFunc {
 
 		w.Header().Set("content-type", "text/plain")
 		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func UpdateMetricJSON(srv Service, logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var m models.Metrics
+		dec := json.NewDecoder(r.Body)
+		if err := dec.Decode(&m); err != nil {
+			logger.Debug("JSON decode error", slog.String("msg", err.Error()))
+			JSONErrorRequestHelper(w, r, logger, http.StatusBadRequest)
+			return
+		}
+
+		if (m.ID == "" || m.MType == "" || m.Value == nil && m.Delta == nil) ||
+			m.MType == models.Counter && m.Delta == nil ||
+			m.MType == models.Gauge && m.Value == nil {
+			JSONErrorRequestHelper(w, r, logger, http.StatusBadRequest)
+			return
+		}
+
+		err := srv.UpdateMetric(&m)
+		if err != nil {
+			logger.Debug("UpdateMetric error", slog.String("msg", err.Error()))
+			JSONErrorRequestHelper(w, r, logger, http.StatusBadRequest)
+			return
+		}
+
+		var body bytes.Buffer
+		if err := json.NewEncoder(&body).Encode(&m); err != nil {
+			logger.Error("JSON encode error", slog.String("msg", err.Error()))
+			JSONErrorRequestHelper(w, r, logger, http.StatusInternalServerError)
+		}
+
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		body.WriteTo(w)
 	}
 }
 
@@ -55,6 +94,39 @@ func GetMetric(srv Service) http.HandlerFunc {
 		w.Header().Set("content-type", "text/plain")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(m.ValueStr()))
+	}
+}
+
+func GetMetricJSON(srv Service, logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var requestM models.Metrics
+		dec := json.NewDecoder(r.Body)
+		if err := dec.Decode(&requestM); err != nil {
+			logger.Debug("JSON decode error", slog.String("msg", err.Error()))
+			JSONErrorRequestHelper(w, r, logger, http.StatusBadRequest)
+			return
+		}
+
+		if requestM.ID == "" || requestM.MType == "" {
+			JSONErrorRequestHelper(w, r, logger, http.StatusBadRequest)
+			return
+		}
+
+		m, ok := srv.GetMetric(requestM.MType, requestM.ID)
+		if !ok {
+			JSONErrorRequestHelper(w, r, logger, http.StatusNotFound)
+			return
+		}
+
+		var body bytes.Buffer
+		if err := json.NewEncoder(&body).Encode(&m); err != nil {
+			logger.Error("JSON encode error", slog.String("msg", err.Error()))
+			JSONErrorRequestHelper(w, r, logger, http.StatusInternalServerError)
+		}
+
+		w.Header().Set("content-type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		body.WriteTo(w)
 	}
 }
 
@@ -108,4 +180,22 @@ func GetAll(srv Service, logger *slog.Logger) http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		body.WriteTo(w)
 	}
+}
+
+func JSONErrorRequestHelper(w http.ResponseWriter, r *http.Request, logger *slog.Logger, code int) {
+	resp := appErrors.JSONError{
+		Code:    code,
+		Message: http.StatusText(code),
+	}
+
+	var body bytes.Buffer
+	err := json.NewEncoder(&body).Encode(resp)
+	if err != nil {
+		logger.Error("JSON encode error", slog.String("msg", err.Error()))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(code)
+	body.WriteTo(w)
 }

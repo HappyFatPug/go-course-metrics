@@ -12,25 +12,37 @@ import (
 	"github.com/HappyFatPug/go-course-metrics/internal/app"
 	"github.com/HappyFatPug/go-course-metrics/internal/config"
 	"github.com/HappyFatPug/go-course-metrics/internal/handler"
+	"github.com/HappyFatPug/go-course-metrics/internal/middleware"
 	"github.com/gorilla/mux"
 )
 
 func main() {
-	config := config.ParseServerFlags()
+	config := config.GetServerConfig()
 
 	app := app.ConfigureTestApp(config.Debug)
 
 	router := mux.NewRouter()
+
 	router.HandleFunc("/", handler.GetAll(app.Service, app.Logger)).Methods("GET")
+
 	router.HandleFunc("/update/{type}/{name}/{value}", handler.UpdateMetric(app.Service, app.Logger)).Methods("POST")
+	router.HandleFunc(
+		"/update/",
+		middleware.JSONHandler(handler.UpdateMetricJSON(app.Service, app.Logger), app.Logger),
+	).Methods("POST")
+
 	router.HandleFunc("/value/{type}/{name}", handler.GetMetric(app.Service)).Methods("GET")
+	router.HandleFunc(
+		"/value/",
+		middleware.JSONHandler(handler.GetMetricJSON(app.Service, app.Logger), app.Logger),
+	).Methods("POST")
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	server := http.Server{
 		Addr:    config.NetAddr.String(),
-		Handler: router,
+		Handler: middleware.WithLogging(app.Logger)(router),
 	}
 
 	go func() {

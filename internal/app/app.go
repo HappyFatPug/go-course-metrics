@@ -23,7 +23,6 @@ func ConfigureTestApp(debug bool) *App {
 
 	memRepo := repository.NewInMemMetricsRepository()
 
-
 	return &App{
 		Debug:   debug,
 		Service: service.NewMetricsService(memRepo, logger),

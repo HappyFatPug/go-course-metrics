@@ -9,7 +9,7 @@ import (
 )
 
 func TestInMemMetricsRepositorySave(t *testing.T) {
-	var counterValue float64 = 444
+	var counterValue int64 = 444
 	var gaugeValue = 445.33
 	testCases := []struct {
 		name      string
@@ -19,7 +19,7 @@ func TestInMemMetricsRepositorySave(t *testing.T) {
 		{
 			name:      "save counter ok",
 			wantError: false,
-			m:         &models.Metrics{ID: "1", MType: models.Counter, Value: &counterValue},
+			m:         &models.Metrics{ID: "1", MType: models.Counter, Delta: &counterValue},
 		},
 		{
 			name:      "save gauge ok",
@@ -76,8 +76,8 @@ func TestInMemMetricsRepositoryFind(t *testing.T) {
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
 			repo := NewInMemMetricsRepository()
-			var testCounterValue float64 = 11
-			repo.Save(&models.Metrics{ID: "testCounter", MType: models.Counter, Value: &testCounterValue})
+			var testCounterValue int64 = 11
+			repo.Save(&models.Metrics{ID: "testCounter", MType: models.Counter, Delta: &testCounterValue})
 			var testGaugeValue = 44.33
 			repo.Save(&models.Metrics{ID: "testGauge", MType: models.Gauge, Value: &testGaugeValue})
 
@@ -90,8 +90,8 @@ func TestInMemMetricsRepositoryFind(t *testing.T) {
 func TestInMemMetricsRepositoryGetAll(t *testing.T) {
 	repo := NewInMemMetricsRepository()
 
-	var testCounterValue float64 = 11
-	repo.Save(&models.Metrics{ID: "testCounter", MType: models.Counter, Value: &testCounterValue})
+	var testCounterValue int64 = 11
+	repo.Save(&models.Metrics{ID: "testCounter", MType: models.Counter, Delta: &testCounterValue})
 	var testGaugeValue = 44.33
 	repo.Save(&models.Metrics{ID: "testGauge", MType: models.Gauge, Value: &testGaugeValue})
 
