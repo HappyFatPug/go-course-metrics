@@ -28,21 +28,25 @@ func main() {
 	router.HandleFunc("/update/{type}/{name}/{value}", handler.UpdateMetric(app.Service, app.Logger)).Methods("POST")
 	router.HandleFunc(
 		"/update/",
-		middleware.JSONHandler(handler.UpdateMetricJSON(app.Service, app.Logger), app.Logger),
+		middleware.JSONRequired(handler.UpdateMetricJSON(app.Service, app.Logger), app.Logger),
 	).Methods("POST")
 
 	router.HandleFunc("/value/{type}/{name}", handler.GetMetric(app.Service)).Methods("GET")
 	router.HandleFunc(
 		"/value/",
-		middleware.JSONHandler(handler.GetMetricJSON(app.Service, app.Logger), app.Logger),
+		middleware.JSONRequired(handler.GetMetricJSON(app.Service, app.Logger), app.Logger),
 	).Methods("POST")
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	server := http.Server{
-		Addr:    config.NetAddr.String(),
-		Handler: middleware.WithLogging(app.Logger)(router),
+		Addr: config.NetAddr.String(),
+		Handler: middleware.GzipMiddleware(app.Logger)(
+			middleware.WithLogging(app.Logger)(
+				router,
+			),
+		),
 	}
 
 	go func() {

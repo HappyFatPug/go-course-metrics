@@ -178,6 +178,7 @@ func GetAll(srv Service, logger *slog.Logger) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
 		body.WriteTo(w)
 	}
 }

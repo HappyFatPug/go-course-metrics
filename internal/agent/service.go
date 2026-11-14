@@ -109,41 +109,30 @@ func (s *AgentService) updateMemStatMetrics() error {
 }
 
 func (s *AgentService) SendAll() {
-	err := s.SendMemStatMetrics()
-	if err != nil {
-		s.logger.Error(err.Error())
-	}
+	s.SendMemStatMetrics()
 
-	err = s.sendMetrics(models.Gauge, "RandomValue")
-	if err != nil {
-		s.logger.Error(err.Error())
-	}
+	s.sendMetrics(models.Gauge, "RandomValue")
 
-	err = s.sendMetrics(models.Counter, "PollCount")
-	if err != nil {
-		s.logger.Error(err.Error())
-	} else {
+	ok := s.sendMetrics(models.Counter, "PollCount")
+	if ok {
 		s.saveCounter("PollCount", 0)
 	}
 }
 
-func (s *AgentService) SendMemStatMetrics() error {
+func (s *AgentService) SendMemStatMetrics() {
 	for _, mName := range strings.Fields(s.memStatNamesToUpdate) {
-		err := s.sendMetrics(models.Gauge, mName)
-		if err != nil {
-			s.logger.Error(err.Error())
-		}
+		s.sendMetrics(models.Gauge, mName)
 	}
-	return nil
 }
 
-func (s *AgentService) sendMetrics(mType, name string) error {
+func (s *AgentService) sendMetrics(mType, name string) bool {
 	m, ok := s.readMetrics(mType, name)
 	if !ok {
 		s.logger.Warn("Cannot read metrics", slog.String("ID", name))
-		return nil
+		return false
 	}
-	return s.client.postMetrics(m)
+	_, ok = s.client.postMetrics(m)
+	return ok
 }
 
 func (s *AgentService) readMetrics(mType string, name string) (*models.Metrics, bool) {

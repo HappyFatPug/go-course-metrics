@@ -67,6 +67,8 @@ func TestPostMetrics(t *testing.T) {
 
 				w.Header().Set("content-type", "application/json")
 				w.WriteHeader(http.StatusOK)
+				enc := json.NewEncoder(w)
+				err = enc.Encode(requestMetric)
 			}))
 			defer server.Close()
 
@@ -84,11 +86,11 @@ func TestPostMetrics(t *testing.T) {
 				logger: slog.Default(),
 			}
 
-			err = client.postMetrics(test.m)
+			_, ok := client.postMetrics(test.m)
 			if test.wantError {
-				assert.Error(t, err)
+				assert.False(t, ok)
 			} else {
-				assert.NoError(t, err)
+				assert.True(t, ok)
 			}
 		})
 	}

@@ -38,6 +38,7 @@ func GetServerConfig() *ServerConfig {
 type AgentClientConfig struct {
 	Scheme  string
 	NetAddr flags.NetAddress `env:"ADDRESS"`
+	UseGzip bool
 }
 
 type AgentConfig struct {
@@ -60,6 +61,7 @@ func GetAgentConfig() *AgentConfig {
 	}
 
 	flag.BoolVar(&config.Debug, "debug", false, "Debug mode")
+	flag.BoolVar(&clientConfig.UseGzip, "gzip", true, "Gzip mode")
 	flag.Var(&clientConfig.NetAddr, "a", "Net address host:port")
 	flag.Int64Var(&config.PollInterval, "p", 2, "Poll interval in sec")
 	flag.Int64Var(&config.ReportInterval, "r", 10, "Report interval in sec")
