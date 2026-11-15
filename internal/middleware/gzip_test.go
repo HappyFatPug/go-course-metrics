@@ -60,6 +60,7 @@ func TestGzipCompression(t *testing.T) {
 		reader, err := gzip.NewReader(resp.Body)
 		require.NoError(t, err)
 		respBody, err := io.ReadAll(reader)
+		assert.NoError(t, err)
 		require.JSONEq(t, string(testMetricBytes), string(respBody))
 	})
 
@@ -75,6 +76,7 @@ func TestGzipCompression(t *testing.T) {
 		defer resp.Body.Close()
 
 		respBody, err := io.ReadAll(resp.Body)
+		assert.NoError(t, err)
 		require.JSONEq(t, string(testMetricBytes), string(respBody))
 	})
 }

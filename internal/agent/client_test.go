@@ -69,6 +69,7 @@ func TestPostMetrics(t *testing.T) {
 				w.WriteHeader(http.StatusOK)
 				enc := json.NewEncoder(w)
 				err = enc.Encode(requestMetric)
+				assert.NoError(t, err)
 			}))
 			defer server.Close()
 
