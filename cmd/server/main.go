@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -19,7 +21,7 @@ import (
 func main() {
 	config := config.GetServerConfig()
 
-	app := app.ConfigureTestApp(config.Debug)
+	app := app.ConfigureTestApp(config.Debug, config.StoreCfg)
 
 	router := mux.NewRouter()
 
@@ -37,9 +39,6 @@ func main() {
 		middleware.JSONRequired(handler.GetMetricJSON(app.Service, app.Logger), app.Logger),
 	).Methods("POST")
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
 	server := http.Server{
 		Addr: config.NetAddr.String(),
 		Handler: middleware.GzipMiddleware(app.Logger)(
@@ -49,13 +48,48 @@ func main() {
 		),
 	}
 
+	if config.StoreCfg.Restore {
+		err := app.Service.RestoreTmpFile()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	var wg sync.WaitGroup
+
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		app.Logger.Info("Starting server", slog.String("URL", config.NetAddr.String()))
 		err := server.ListenAndServe()
 		if err != nil {
 			app.Logger.Error(err.Error())
 		}
 	}()
+
+	if config.StoreCfg.StoreInterval > 0 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			tickerPeriod := time.Duration(config.StoreCfg.StoreInterval) * time.Second
+			ticker := time.NewTicker(tickerPeriod)
+			defer ticker.Stop()
+
+			app.Logger.Info("Dumper starting", slog.String("period", tickerPeriod.String()))
+			for {
+				select {
+				case <-ctx.Done():
+					app.Logger.Info("Dumper: shutdown signal received")
+					app.Service.DumpTmpFile()
+					return
+				case <-ticker.C:
+					app.Service.DumpTmpFile()
+				}
+			}
+		}()
+	}
 
 	<-ctx.Done()
 	app.Logger.Warn("Shutdown signal received...")
@@ -67,4 +101,6 @@ func main() {
 	} else {
 		app.Logger.Warn("Server stopped")
 	}
+
+	wg.Wait()
 }

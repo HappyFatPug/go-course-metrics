@@ -8,9 +8,16 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
+type StoreConfig struct {
+	StoreInterval   int64  `env:"STORE_INTERVAL"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	Restore         bool   `env:"RESTORE"`
+}
+
 type ServerConfig struct {
-	NetAddr flags.NetAddress `env:"ADDRESS"`
-	Debug   bool
+	NetAddr  flags.NetAddress `env:"ADDRESS"`
+	StoreCfg *StoreConfig
+	Debug    bool
 }
 
 func GetServerConfig() *ServerConfig {
@@ -19,9 +26,14 @@ func GetServerConfig() *ServerConfig {
 			Host: "localhost",
 			Port: 8080,
 		},
+		StoreCfg: &StoreConfig{},
 	}
-	flag.BoolVar(&config.Debug, "debug", false, "Debug mode")
+	// flag.BoolVar(&config.Debug, "debug", false, "Debug mode")
+	flag.BoolVar(&config.Debug, "debug", true, "Debug mode")
 	flag.Var(&config.NetAddr, "a", "Net address host:port")
+	flag.Int64Var(&config.StoreCfg.StoreInterval, "i", 300, "Store interval")
+	flag.StringVar(&config.StoreCfg.FileStoragePath, "f", "", "File storeage path")
+	flag.BoolVar(&config.StoreCfg.Restore, "r", false, "Restore from store file")
 
 	// parse cli arguments
 	flag.Parse()

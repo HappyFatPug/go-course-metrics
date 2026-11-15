@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/HappyFatPug/go-course-metrics/internal/app"
+	"github.com/HappyFatPug/go-course-metrics/internal/config"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -50,7 +51,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app := app.ConfigureTestApp(false)
+			app := app.ConfigureTestApp(false, &config.StoreConfig{})
 
 			router := mux.NewRouter()
 			router.HandleFunc("/update/{type}/{name}/{value}", UpdateMetric(app.Service, app.Logger)).Methods("POST")
@@ -127,7 +128,7 @@ func TestGetMetric(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app := app.ConfigureTestApp(false)
+			app := app.ConfigureTestApp(false, &config.StoreConfig{})
 
 			for _, m := range initialMetrics {
 				assert.NoError(t, app.Service.UpdateMetricRaw(m.mType, m.ID, m.Value))
@@ -172,7 +173,7 @@ func TestGetAll(t *testing.T) {
 		},
 	}
 
-	app := app.ConfigureTestApp(false)
+	app := app.ConfigureTestApp(false, &config.StoreConfig{})
 
 	for _, m := range initialMetrics {
 		assert.NoError(t, app.Service.UpdateMetricRaw(m.mType, m.ID, m.Value))
@@ -282,7 +283,7 @@ func TestUpdateMetricJSONHandler(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app := app.ConfigureTestApp(false)
+			app := app.ConfigureTestApp(false, &config.StoreConfig{})
 
 			router := mux.NewRouter()
 			router.HandleFunc("/update/", UpdateMetricJSON(app.Service, app.Logger)).Methods("POST")
@@ -377,7 +378,7 @@ func TestGetMetricJSON(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app := app.ConfigureTestApp(false)
+			app := app.ConfigureTestApp(false, &config.StoreConfig{})
 
 			for _, m := range initialMetricsRaw {
 				assert.NoError(t, app.Service.UpdateMetricRaw(m.mType, m.ID, m.Value))
