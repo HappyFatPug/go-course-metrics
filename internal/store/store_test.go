@@ -23,7 +23,7 @@ func TestMetricsStore(t *testing.T) {
 	tmpFile.Close()
 
 	var intVal int64 = 100
-	var floatVal float64 = 100.0
+	floatVal := 100.0
 
 	testCases := []struct {
 		name        string
