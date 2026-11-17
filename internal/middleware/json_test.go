@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +20,10 @@ func TestJSONHandlerMiddleware(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	server := httptest.NewServer(http.HandlerFunc(JSONRequired(hfunc, logger)))
+	router := mux.NewRouter()
+	router.Use(JSONRequired(logger))
+	router.HandleFunc("/", hfunc)
+	server := httptest.NewServer(router)
 	defer server.Close()
 
 	resp, err := server.Client().Post(server.URL, "text/plain", nil)

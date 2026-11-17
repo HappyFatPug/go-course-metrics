@@ -2,7 +2,6 @@ package agent
 
 import (
 	"bytes"
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/HappyFatPug/go-course-metrics/internal/config"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
+	"github.com/HappyFatPug/go-course-metrics/pkg/compress"
 )
 
 type Client struct {
@@ -48,20 +48,14 @@ func (client *Client) postMetrics(m *models.Metrics) (*models.Metrics, bool) {
 	var req *http.Request
 
 	if client.useGzip {
-		var gBody bytes.Buffer
-		gw := gzip.NewWriter(&gBody)
+		cBody, err := compress.Compress(body)
 
-		_, err = gw.Write(body)
 		if err != nil {
 			client.logger.Error("gzip encode error", slog.String("msg", err.Error()))
 			return nil, false
 		}
-		if err = gw.Close(); err != nil {
-			client.logger.Error("gzip encode error", slog.String("msg", err.Error()))
-			return nil, false
-		}
 
-		req, err = http.NewRequest(http.MethodPost, endpoint, &gBody)
+		req, err = http.NewRequest(http.MethodPost, endpoint, bytes.NewReader(cBody))
 		if err != nil {
 			client.logger.Error("build http request error", slog.String("msg", err.Error()))
 			return nil, false
@@ -94,12 +88,7 @@ func (client *Client) postMetrics(m *models.Metrics) (*models.Metrics, bool) {
 	defer resp.Body.Close()
 	var respBody []byte
 	if resp.Header.Get("Content-Encoding") == "gzip" {
-		gr, err := gzip.NewReader(resp.Body)
-		if err != nil {
-			client.logger.Error("gzip encode error", slog.String("msg", err.Error()))
-			return nil, false
-		}
-		respBody, err = io.ReadAll(gr)
+		respBody, err = compress.Decompress(resp.Body)
 		if err != nil {
 			client.logger.Error("gzip encode error", slog.String("msg", err.Error()))
 			return nil, false

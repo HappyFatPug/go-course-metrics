@@ -4,11 +4,9 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/HappyFatPug/go-course-metrics/internal/config"
 	"github.com/HappyFatPug/go-course-metrics/internal/logger"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
 	"github.com/HappyFatPug/go-course-metrics/internal/repository"
-	"github.com/HappyFatPug/go-course-metrics/internal/store"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -62,7 +60,6 @@ func TestUpdateMetric(t *testing.T) {
 			logger := logger.ConfigureLogger(slog.LevelInfo)
 			s := NewMetricsService(
 				repository.NewInMemMetricsRepository(),
-				store.NewMetricsStore(&config.StoreConfig{StoreInterval: 300}, logger),
 				logger,
 			)
 

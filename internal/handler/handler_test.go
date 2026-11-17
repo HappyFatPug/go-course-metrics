@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/HappyFatPug/go-course-metrics/internal/app"
 	"github.com/HappyFatPug/go-course-metrics/internal/config"
+	"github.com/HappyFatPug/go-course-metrics/internal/middleware"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -51,7 +53,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app := app.ConfigureTestApp(false, &config.StoreConfig{})
+			app := app.ConfigureApp(false, &config.StoreConfig{})
 
 			router := mux.NewRouter()
 			router.HandleFunc("/update/{type}/{name}/{value}", UpdateMetric(app.Service, app.Logger)).Methods("POST")
@@ -128,7 +130,7 @@ func TestGetMetric(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app := app.ConfigureTestApp(false, &config.StoreConfig{})
+			app := app.ConfigureApp(false, &config.StoreConfig{})
 
 			for _, m := range initialMetrics {
 				assert.NoError(t, app.Service.UpdateMetricRaw(m.mType, m.ID, m.Value))
@@ -173,7 +175,7 @@ func TestGetAll(t *testing.T) {
 		},
 	}
 
-	app := app.ConfigureTestApp(false, &config.StoreConfig{})
+	app := app.ConfigureApp(false, &config.StoreConfig{})
 
 	for _, m := range initialMetrics {
 		assert.NoError(t, app.Service.UpdateMetricRaw(m.mType, m.ID, m.Value))
@@ -208,11 +210,12 @@ func TestUpdateMetricJSONHandler(t *testing.T) {
 		Delta int64   `json:"delta,omitempty"`
 	}
 	testCases := []struct {
-		name     string
-		method   string
-		url      string
-		wantCode int
-		m        postBodyMetrics
+		name        string
+		method      string
+		url         string
+		wantCode    int
+		contentType string
+		m           postBodyMetrics
 	}{
 		{
 			name:     "simple 200",
@@ -249,6 +252,13 @@ func TestUpdateMetricJSONHandler(t *testing.T) {
 			wantCode: http.StatusMethodNotAllowed,
 		},
 		{
+			name:        "415",
+			method:      http.MethodPost,
+			url:         "/update/",
+			contentType: "plain/text",
+			wantCode:    http.StatusUnsupportedMediaType,
+		},
+		{
 			name:     "validation error1",
 			method:   http.MethodPost,
 			url:      "/update/",
@@ -283,14 +293,21 @@ func TestUpdateMetricJSONHandler(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app := app.ConfigureTestApp(false, &config.StoreConfig{})
+			app := app.ConfigureApp(false, &config.StoreConfig{})
 
 			router := mux.NewRouter()
+			router.Use(middleware.JSONRequired(slog.Default()))
 			router.HandleFunc("/update/", UpdateMetricJSON(app.Service, app.Logger)).Methods("POST")
 
 			body, err := json.Marshal(&test.m)
 			assert.NoError(t, err)
-			request := httptest.NewRequest(test.method, test.url, bytes.NewReader(body))
+			request, err := http.NewRequest(test.method, test.url, bytes.NewReader(body))
+			assert.NoError(t, err)
+			if test.contentType != "" {
+				request.Header.Set("content-type", test.contentType)
+			} else {
+				request.Header.Set("content-type", "application/json")
+			}
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, request)
@@ -378,7 +395,7 @@ func TestGetMetricJSON(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app := app.ConfigureTestApp(false, &config.StoreConfig{})
+			app := app.ConfigureApp(false, &config.StoreConfig{})
 
 			for _, m := range initialMetricsRaw {
 				assert.NoError(t, app.Service.UpdateMetricRaw(m.mType, m.ID, m.Value))

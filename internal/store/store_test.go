@@ -2,22 +2,25 @@ package store
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"log/slog"
 	"os"
 	"testing"
 
-	"github.com/HappyFatPug/go-course-metrics/internal/config"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMetricsStore(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "dump*.json")
+	tmpFile, err := os.CreateTemp("", "dump**.json")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() {
+		err := os.Remove(tmpFile.Name())
+		fmt.Println(err)
+	}()
 
 	filePath := tmpFile.Name()
 	tmpFile.Close()
@@ -27,15 +30,12 @@ func TestMetricsStore(t *testing.T) {
 
 	testCases := []struct {
 		name        string
-		cfg         *config.StoreConfig
+		fpath       string
 		testMetrics []models.Metrics
 	}{
 		{
-			name: "basic test",
-			cfg: &config.StoreConfig{
-				StoreInterval:   1,
-				FileStoragePath: filePath,
-			},
+			name:  "basic test",
+			fpath: filePath,
 			testMetrics: []models.Metrics{
 				{
 					ID:    "1",
@@ -51,11 +51,8 @@ func TestMetricsStore(t *testing.T) {
 		},
 
 		{
-			name: "basic test 1",
-			cfg: &config.StoreConfig{
-				StoreInterval:   0,
-				FileStoragePath: filePath,
-			},
+			name:  "basic test 1",
+			fpath: filePath,
 			testMetrics: []models.Metrics{
 				{
 					ID:    "3",
@@ -73,15 +70,13 @@ func TestMetricsStore(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			store := NewMetricsStore(test.cfg, slog.Default())
-
-			assert.Equal(t, test.cfg.StoreInterval == 0, store.IsSync())
+			store := NewMetricsStore(test.fpath, slog.Default())
 
 			assert.NoError(t, store.Dump(test.testMetrics))
 
-			assert.FileExists(t, filePath)
+			assert.FileExists(t, test.fpath)
 
-			file, err := os.OpenFile(filePath, os.O_RDONLY, 0666)
+			file, err := os.OpenFile(test.fpath, os.O_RDONLY, 0666)
 			assert.NoError(t, err)
 
 			var dumpedMetrics []models.Metrics
@@ -101,7 +96,8 @@ func TestMetricsStore(t *testing.T) {
 
 			storedMetrics, err := store.ListStored()
 			assert.NoError(t, err)
-			assert.ObjectsAreEqual(storedMetrics, dumpedMetrics)
+			assert.ElementsMatch(t, test.testMetrics, storedMetrics)
+			assert.ElementsMatch(t, storedMetrics, dumpedMetrics)
 		})
 	}
 }

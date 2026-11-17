@@ -14,22 +14,14 @@ type MetricsRepository interface {
 	GetAll() []models.Metrics
 }
 
-type MetricsStore interface {
-	Dump(metrics []models.Metrics) error
-	ListStored() ([]models.Metrics, error)
-	IsSync() bool
-}
-
 type MetricsService struct {
 	repo   MetricsRepository
-	store  MetricsStore
 	logger *slog.Logger
 }
 
-func NewMetricsService(repo MetricsRepository, store MetricsStore, logger *slog.Logger) *MetricsService {
+func NewMetricsService(repo MetricsRepository, logger *slog.Logger) *MetricsService {
 	return &MetricsService{
 		repo:   repo,
-		store:  store,
 		logger: logger,
 	}
 }
@@ -81,10 +73,6 @@ func (s *MetricsService) UpdateMetric(m *models.Metrics) error {
 		err = errors.New("wrong type")
 	}
 
-	if err == nil && s.store.IsSync() {
-		return s.DumpTmpFile()
-	}
-
 	return err
 }
 
@@ -132,28 +120,4 @@ func (s *MetricsService) GetMetric(mType, name string) (*models.Metrics, bool) {
 
 func (s *MetricsService) GetAllMetrics() []models.Metrics {
 	return s.repo.GetAll()
-}
-
-func (s *MetricsService) DumpTmpFile() error {
-	err := s.store.Dump(s.GetAllMetrics())
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *MetricsService) RestoreTmpFile() error {
-	ms, err := s.store.ListStored()
-	if err != nil {
-		return err
-	}
-	for _, m := range ms {
-		err := s.repo.Save(&m)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

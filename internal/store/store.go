@@ -4,25 +4,26 @@ import (
 	"encoding/json"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sync"
 
-	"github.com/HappyFatPug/go-course-metrics/internal/config"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
 )
 
 type MetricsStore struct {
-	Sync     bool
+	dir      string
 	filename string
 	logger   *slog.Logger
 	mu       sync.Mutex
 }
 
-func NewMetricsStore(cfg *config.StoreConfig, logger *slog.Logger) *MetricsStore {
-	return &MetricsStore{Sync: cfg.StoreInterval == 0, filename: cfg.FileStoragePath, logger: logger}
-}
-
-func (s *MetricsStore) IsSync() bool {
-	return s.Sync
+func NewMetricsStore(storagePath string, logger *slog.Logger) *MetricsStore {
+	dir, filename := filepath.Split(storagePath)
+	return &MetricsStore{
+		filename: filename,
+		dir:      dir,
+		logger:   logger,
+	}
 }
 
 func (s *MetricsStore) Dump(metrics []models.Metrics) error {
@@ -33,13 +34,24 @@ func (s *MetricsStore) Dump(metrics []models.Metrics) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	file, err := os.OpenFile(s.filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	tmpFile, err := os.CreateTemp(s.dir, ".tmp-*.json")
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if tmpFile != nil {
+			if err := tmpFile.Close(); err != nil {
+				s.logger.Error("close tmp file error", slog.String("err", err.Error()))
+				return
+			}
+			if err := os.Remove(tmpFile.Name()); err != nil {
+				s.logger.Error("remove tmp file error", slog.String("err", err.Error()))
+				return
+			}
+		}
+	}()
 
-	enc := json.NewEncoder(file)
+	enc := json.NewEncoder(tmpFile)
 
 	for _, m := range metrics {
 		err := enc.Encode(&m)
@@ -47,6 +59,20 @@ func (s *MetricsStore) Dump(metrics []models.Metrics) error {
 			return err
 		}
 	}
+
+	if err := tmpFile.Close(); err != nil {
+		s.logger.Error("close tmp file error", slog.String("err", err.Error()))
+		return err
+	}
+	if err := os.Chmod(tmpFile.Name(), 0666); err != nil {
+		s.logger.Error("chmod tmp file error", slog.String("err", err.Error()))
+		return err
+	}
+	if err := os.Rename(tmpFile.Name(), filepath.Join(s.dir, s.filename)); err != nil {
+		s.logger.Error("rename tmp file error", slog.String("err", err.Error()))
+		return err
+	}
+	tmpFile = nil
 	return nil
 }
 
@@ -58,7 +84,7 @@ func (s *MetricsStore) ListStored() ([]models.Metrics, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	file, err := os.OpenFile(s.filename, os.O_RDONLY|os.O_CREATE, 0666)
+	file, err := os.OpenFile(filepath.Join(s.dir, s.filename), os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return nil, err
 	}
