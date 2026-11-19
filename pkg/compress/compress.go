@@ -37,20 +37,3 @@ func Decompress(input io.Reader) ([]byte, error) {
 
 	return b.Bytes(), nil
 }
-
-type CopmpressWriter struct {
-	w io.Writer
-}
-
-func NewCompressWriter(w io.Writer) *CopmpressWriter {
-	return &CopmpressWriter{w: w}
-}
-
-func (c *CopmpressWriter) Write(input []byte) (int, error) {
-	compressed, err := Compress(input)
-	if err != nil {
-		return 0, err
-	}
-
-	return c.w.Write(compressed)
-}

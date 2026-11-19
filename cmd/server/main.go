@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -20,7 +21,10 @@ import (
 func main() {
 	config := config.GetServerConfig()
 
-	app := app.ConfigureApp(config.Debug, config.StoreCfg)
+	app, err := app.ConfigureApp(config.Debug, config.StoreCfg)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	router := mux.NewRouter()
 

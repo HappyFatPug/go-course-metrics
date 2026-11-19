@@ -31,7 +31,7 @@ func GetServerConfig() *ServerConfig {
 	flag.BoolVar(&config.Debug, "debug", false, "Debug mode")
 	flag.Var(&config.NetAddr, "a", "Net address host:port")
 	flag.Int64Var(&config.StoreCfg.StoreInterval, "i", 300, "Store interval")
-	flag.StringVar(&config.StoreCfg.FileStoragePath, "f", "", "File storeage path")
+	flag.StringVar(&config.StoreCfg.FileStoragePath, "f", "./dump.json", "File storeage path")
 	flag.BoolVar(&config.StoreCfg.Restore, "r", false, "Restore from store file")
 
 	// parse cli arguments

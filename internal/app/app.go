@@ -11,13 +11,13 @@ import (
 )
 
 type App struct {
-	Debug   bool
-	Service *service.MetricsService
+	Debug      bool
+	Service    *service.MetricsService
 	Repository *repository.StorableMetricsRepository
-	Logger  *slog.Logger
+	Logger     *slog.Logger
 }
 
-func ConfigureApp(debug bool, storeCfg *config.StoreConfig) *App {
+func ConfigureApp(debug bool, storeCfg *config.StoreConfig) (*App, error) {
 	var lLevel slog.Leveler = slog.LevelInfo
 	if debug {
 		lLevel = slog.LevelDebug
@@ -26,16 +26,19 @@ func ConfigureApp(debug bool, storeCfg *config.StoreConfig) *App {
 
 	memRepo := repository.NewInMemMetricsRepository()
 	store := store.NewMetricsStore(storeCfg.FileStoragePath, logger)
-	rep := repository.NewStorableMetricsRepository(
+	rep, err := repository.NewStorableMetricsRepository(
 		memRepo,
 		store,
 		storeCfg,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	return &App{
-		Debug:   debug,
-		Service: service.NewMetricsService(rep, logger),
+		Debug:      debug,
+		Service:    service.NewMetricsService(rep, logger),
 		Repository: rep,
-		Logger:  logger,
-	}
+		Logger:     logger,
+	}, nil
 }

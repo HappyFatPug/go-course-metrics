@@ -2,6 +2,7 @@ package store
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -64,15 +65,24 @@ func (s *MetricsStore) Dump(metrics []models.Metrics) error {
 		s.logger.Error("close tmp file error", slog.String("err", err.Error()))
 		return err
 	}
-	if err := os.Chmod(tmpFile.Name(), 0666); err != nil {
-		s.logger.Error("chmod tmp file error", slog.String("err", err.Error()))
-		return err
-	}
-	if err := os.Rename(tmpFile.Name(), filepath.Join(s.dir, s.filename)); err != nil {
-		s.logger.Error("rename tmp file error", slog.String("err", err.Error()))
-		return err
-	}
+	tmpFileName := tmpFile.Name()
 	tmpFile = nil
+	if err := os.Chmod(tmpFileName, 0666); err != nil {
+		s.logger.Error("chmod tmp file error", slog.String("err", err.Error()))
+		if removeErr := os.Remove(tmpFileName); removeErr != nil {
+			s.logger.Error("remove tmp file error", slog.String("err", removeErr.Error()))
+			return errors.Join(err, removeErr)
+		}
+		return err
+	}
+	if err := os.Rename(tmpFileName, filepath.Join(s.dir, s.filename)); err != nil {
+		s.logger.Error("rename tmp file error", slog.String("err", err.Error()))
+		if removeErr := os.Remove(tmpFileName); removeErr != nil {
+			s.logger.Error("remove tmp file error", slog.String("err", removeErr.Error()))
+			return errors.Join(err, removeErr)
+		}
+		return err
+	}
 	return nil
 }
 

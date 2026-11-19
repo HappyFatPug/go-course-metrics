@@ -1,8 +1,6 @@
 package repository
 
 import (
-	"log"
-
 	"github.com/HappyFatPug/go-course-metrics/internal/config"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
 )
@@ -24,7 +22,7 @@ type StorableMetricsRepository struct {
 	Sync bool
 }
 
-func NewStorableMetricsRepository(repo Repository, store Store, cfg *config.StoreConfig) *StorableMetricsRepository {
+func NewStorableMetricsRepository(repo Repository, store Store, cfg *config.StoreConfig) (*StorableMetricsRepository, error) {
 	r := StorableMetricsRepository{
 		repo,
 		store,
@@ -34,11 +32,11 @@ func NewStorableMetricsRepository(repo Repository, store Store, cfg *config.Stor
 	if cfg.Restore {
 		err := r.RestoreDump()
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 	}
 
-	return &r
+	return &r, nil
 }
 
 func (r *StorableMetricsRepository) Save(m *models.Metrics) error {

@@ -16,6 +16,7 @@ import (
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUpdateMetricHandler(t *testing.T) {
@@ -53,7 +54,8 @@ func TestUpdateMetricHandler(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app := app.ConfigureApp(false, &config.StoreConfig{})
+			app, err := app.ConfigureApp(false, &config.StoreConfig{})
+			require.NoError(t, err)
 
 			router := mux.NewRouter()
 			router.HandleFunc("/update/{type}/{name}/{value}", UpdateMetric(app.Service, app.Logger)).Methods("POST")
@@ -130,7 +132,8 @@ func TestGetMetric(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app := app.ConfigureApp(false, &config.StoreConfig{})
+			app, err := app.ConfigureApp(false, &config.StoreConfig{})
+			require.NoError(t, err)
 
 			for _, m := range initialMetrics {
 				assert.NoError(t, app.Service.UpdateMetricRaw(m.mType, m.ID, m.Value))
@@ -175,7 +178,8 @@ func TestGetAll(t *testing.T) {
 		},
 	}
 
-	app := app.ConfigureApp(false, &config.StoreConfig{})
+	app, err := app.ConfigureApp(false, &config.StoreConfig{})
+	require.NoError(t, err)
 
 	for _, m := range initialMetrics {
 		assert.NoError(t, app.Service.UpdateMetricRaw(m.mType, m.ID, m.Value))
@@ -293,7 +297,8 @@ func TestUpdateMetricJSONHandler(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app := app.ConfigureApp(false, &config.StoreConfig{})
+			app, err := app.ConfigureApp(false, &config.StoreConfig{})
+			require.NoError(t, err)
 
 			router := mux.NewRouter()
 			router.Use(middleware.JSONRequired(slog.Default()))
@@ -395,7 +400,8 @@ func TestGetMetricJSON(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app := app.ConfigureApp(false, &config.StoreConfig{})
+			app, err := app.ConfigureApp(false, &config.StoreConfig{})
+			require.NoError(t, err)
 
 			for _, m := range initialMetricsRaw {
 				assert.NoError(t, app.Service.UpdateMetricRaw(m.mType, m.ID, m.Value))
