@@ -61,11 +61,16 @@ func (s *MetricsStore) Dump(metrics []models.Metrics) error {
 		}
 	}
 
+	tmpFileName := tmpFile.Name()
 	if err := tmpFile.Close(); err != nil {
+		tmpFile = nil
 		s.logger.Error("close tmp file error", slog.String("err", err.Error()))
+		if removeErr := os.Remove(tmpFileName); removeErr != nil {
+			s.logger.Error("remove tmp file error", slog.String("err", removeErr.Error()))
+			return errors.Join(err, removeErr)
+		}
 		return err
 	}
-	tmpFileName := tmpFile.Name()
 	tmpFile = nil
 	if err := os.Chmod(tmpFileName, 0666); err != nil {
 		s.logger.Error("chmod tmp file error", slog.String("err", err.Error()))
