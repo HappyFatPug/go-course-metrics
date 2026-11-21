@@ -1,16 +1,22 @@
 package handler
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/HappyFatPug/go-course-metrics/internal/app"
+	"github.com/HappyFatPug/go-course-metrics/internal/config"
+	"github.com/HappyFatPug/go-course-metrics/internal/middleware"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUpdateMetricHandler(t *testing.T) {
@@ -48,7 +54,8 @@ func TestUpdateMetricHandler(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app := app.ConfigureTestApp(false)
+			app, err := app.ConfigureApp(false, &config.StoreConfig{})
+			require.NoError(t, err)
 
 			router := mux.NewRouter()
 			router.HandleFunc("/update/{type}/{name}/{value}", UpdateMetric(app.Service, app.Logger)).Methods("POST")
@@ -125,10 +132,11 @@ func TestGetMetric(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app := app.ConfigureTestApp(false)
+			app, err := app.ConfigureApp(false, &config.StoreConfig{})
+			require.NoError(t, err)
 
 			for _, m := range initialMetrics {
-				assert.NoError(t, app.Service.UpdateMetric(m.mType, m.ID, m.Value))
+				assert.NoError(t, app.Service.UpdateMetricRaw(m.mType, m.ID, m.Value))
 			}
 
 			router := mux.NewRouter()
@@ -170,10 +178,11 @@ func TestGetAll(t *testing.T) {
 		},
 	}
 
-	app := app.ConfigureTestApp(false)
+	app, err := app.ConfigureApp(false, &config.StoreConfig{})
+	require.NoError(t, err)
 
 	for _, m := range initialMetrics {
-		assert.NoError(t, app.Service.UpdateMetric(m.mType, m.ID, m.Value))
+		assert.NoError(t, app.Service.UpdateMetricRaw(m.mType, m.ID, m.Value))
 	}
 
 	router := mux.NewRouter()
@@ -195,4 +204,241 @@ func TestGetAll(t *testing.T) {
 	bodyStr = strings.ReplaceAll(bodyStr, " ", "")
 	assert.Contains(t, bodyStr, "<span>testCounter</span>:<span>123</span>")
 	assert.Contains(t, bodyStr, "<span>testGauge</span>:<span>0.321</span>")
+}
+
+func TestUpdateMetricJSONHandler(t *testing.T) {
+	type postBodyMetrics struct {
+		ID    string  `json:"id,omitempty"`
+		MType string  `json:"type,omitempty"`
+		Value float64 `json:"value,omitempty"`
+		Delta int64   `json:"delta,omitempty"`
+	}
+	testCases := []struct {
+		name        string
+		method      string
+		url         string
+		wantCode    int
+		contentType string
+		m           postBodyMetrics
+	}{
+		{
+			name:     "simple 200",
+			method:   http.MethodPost,
+			url:      "/update/",
+			wantCode: http.StatusOK,
+			m: postBodyMetrics{
+				ID:    "metric",
+				MType: "counter",
+				Delta: 20,
+			},
+		},
+		{
+			name:     "simple 200 1",
+			method:   http.MethodPost,
+			url:      "/update/",
+			wantCode: http.StatusOK,
+			m: postBodyMetrics{
+				ID:    "metric1",
+				MType: "gauge",
+				Value: 20.001,
+			},
+		},
+		{
+			name:     "404",
+			method:   http.MethodPost,
+			url:      "/update",
+			wantCode: http.StatusNotFound,
+		},
+		{
+			name:     "405",
+			method:   http.MethodPut,
+			url:      "/update/",
+			wantCode: http.StatusMethodNotAllowed,
+		},
+		{
+			name:        "415",
+			method:      http.MethodPost,
+			url:         "/update/",
+			contentType: "plain/text",
+			wantCode:    http.StatusUnsupportedMediaType,
+		},
+		{
+			name:     "validation error1",
+			method:   http.MethodPost,
+			url:      "/update/",
+			wantCode: http.StatusBadRequest,
+			m: postBodyMetrics{
+				ID:    "metric",
+				MType: "counter1",
+				Delta: 20,
+			},
+		},
+		{
+			name:     "validation error2",
+			method:   http.MethodPost,
+			url:      "/update/",
+			wantCode: http.StatusBadRequest,
+			m: postBodyMetrics{
+				ID:    "metric",
+				MType: "counter",
+			},
+		},
+		{
+			name:     "validation error3",
+			method:   http.MethodPost,
+			url:      "/update/",
+			wantCode: http.StatusBadRequest,
+			m: postBodyMetrics{
+				ID:    "metric",
+				Value: 20,
+			},
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.name, func(t *testing.T) {
+			app, err := app.ConfigureApp(false, &config.StoreConfig{})
+			require.NoError(t, err)
+
+			router := mux.NewRouter()
+			router.Use(middleware.JSONRequired(slog.Default()))
+			router.HandleFunc("/update/", UpdateMetricJSON(app.Service, app.Logger)).Methods("POST")
+
+			body, err := json.Marshal(&test.m)
+			assert.NoError(t, err)
+			request, err := http.NewRequest(test.method, test.url, bytes.NewReader(body))
+			assert.NoError(t, err)
+			if test.contentType != "" {
+				request.Header.Set("content-type", test.contentType)
+			} else {
+				request.Header.Set("content-type", "application/json")
+			}
+			w := httptest.NewRecorder()
+
+			router.ServeHTTP(w, request)
+			r := w.Result()
+
+			assert.Equal(t, test.wantCode, r.StatusCode)
+		})
+	}
+}
+
+func TestGetMetricJSON(t *testing.T) {
+	type responseBodyMetric struct {
+		ID    string  `json:"id"`
+		MType string  `json:"type"`
+		Value float64 `json:"value"`
+		Delta int64   `json:"delta"`
+	}
+
+	type testMetric struct {
+		ID    string
+		mType string
+		Value string
+	}
+	initialMetricsRaw := []testMetric{
+		{
+			ID:    "testCounter",
+			mType: models.Counter,
+			Value: "123",
+		},
+		{
+			ID:    "testGauge",
+			mType: models.Gauge,
+			Value: "0.321",
+		},
+	}
+	testCases := []struct {
+		name      string
+		method    string
+		url       string
+		wantCode  int
+		mID       string
+		mType     string
+		wantValue float64
+		wantDelta int64
+	}{
+		{
+			name:      "counter 200",
+			method:    http.MethodGet,
+			url:       "/value/",
+			wantCode:  http.StatusOK,
+			mID:       "testCounter",
+			mType:     models.Counter,
+			wantDelta: 123,
+		},
+		{
+			name:      "gauge 200",
+			method:    http.MethodGet,
+			url:       "/value/",
+			wantCode:  http.StatusOK,
+			mID:       "testGauge",
+			mType:     models.Gauge,
+			wantValue: 0.321,
+		},
+		{
+			name:     "404",
+			method:   http.MethodGet,
+			url:      "/value",
+			wantCode: http.StatusNotFound,
+		},
+		{
+			name:     "counter 404",
+			method:   http.MethodGet,
+			url:      "/value/",
+			wantCode: http.StatusNotFound,
+			mID:      "testCounter1",
+			mType:    models.Counter,
+		},
+		{
+			name:     "405",
+			method:   http.MethodPost,
+			url:      "/value/",
+			wantCode: http.StatusMethodNotAllowed,
+		},
+	}
+
+	for _, test := range testCases {
+		t.Run(test.name, func(t *testing.T) {
+			app, err := app.ConfigureApp(false, &config.StoreConfig{})
+			require.NoError(t, err)
+
+			for _, m := range initialMetricsRaw {
+				assert.NoError(t, app.Service.UpdateMetricRaw(m.mType, m.ID, m.Value))
+			}
+
+			router := mux.NewRouter()
+			router.HandleFunc("/value/", GetMetricJSON(app.Service, app.Logger)).Methods("GET")
+
+			requestBodyM := struct {
+				ID    string `json:"id"`
+				MType string `json:"type"`
+			}{
+				ID:    test.mID,
+				MType: test.mType,
+			}
+			body, err := json.Marshal(&requestBodyM)
+			assert.NoError(t, err)
+			request := httptest.NewRequest(test.method, test.url, bytes.NewReader(body))
+			w := httptest.NewRecorder()
+
+			router.ServeHTTP(w, request)
+			r := w.Result()
+
+			assert.Equal(t, test.wantCode, r.StatusCode)
+			if test.wantCode == http.StatusOK {
+				defer r.Body.Close()
+				body, err := io.ReadAll(r.Body)
+				assert.NoError(t, err)
+
+				var responseM responseBodyMetric
+				assert.NoError(t, json.Unmarshal(body, &responseM))
+				if test.wantDelta > 0 {
+					assert.Equal(t, test.wantDelta, responseM.Delta)
+				} else if test.wantValue > 0 {
+					assert.Equal(t, test.wantValue, responseM.Value)
+				}
+			}
+		})
+	}
 }

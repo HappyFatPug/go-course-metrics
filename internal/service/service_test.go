@@ -57,12 +57,16 @@ func TestUpdateMetric(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			s := NewMetricsService(repository.NewInMemMetricsRepository(), logger.ConfigureLogger(slog.LevelInfo))
+			logger := logger.ConfigureLogger(slog.LevelInfo)
+			s := NewMetricsService(
+				repository.NewInMemMetricsRepository(),
+				logger,
+			)
 
 			if !test.wantError {
-				assert.NoError(t, s.UpdateMetric(test.mType, test.mName, test.mValue))
+				assert.NoError(t, s.UpdateMetricRaw(test.mType, test.mName, test.mValue))
 			} else {
-				assert.Error(t, s.UpdateMetric(test.mType, test.mName, test.mValue))
+				assert.Error(t, s.UpdateMetricRaw(test.mType, test.mName, test.mValue))
 			}
 		})
 	}

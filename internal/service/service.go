@@ -26,13 +26,49 @@ func NewMetricsService(repo MetricsRepository, logger *slog.Logger) *MetricsServ
 	}
 }
 
-func (s *MetricsService) UpdateMetric(mType, mName, mValue string) error {
-	var err error
+func (s *MetricsService) UpdateMetricRaw(mType, mName, mValue string) error {
+	m, err := s.buildMetric(mType, mName, mValue)
+	if err != nil {
+		return err
+	}
+
+	return s.UpdateMetric(m)
+}
+
+func (s *MetricsService) buildMetric(mType, mName, mValue string) (*models.Metrics, error) {
 	switch mType {
 	case models.Counter:
-		err = s.updateCounter(mName, mValue)
+		value, err := strconv.ParseInt(mValue, 10, 64)
+		if err != nil {
+			return nil, errors.New("value must be integer")
+		}
+		return &models.Metrics{
+			ID:    mName,
+			MType: models.Counter,
+			Delta: &value,
+		}, nil
 	case models.Gauge:
-		err = s.updateGauge(mName, mValue)
+		value, err := strconv.ParseFloat(mValue, 64)
+		if err != nil {
+			return nil, err
+		}
+		return &models.Metrics{
+			ID:    mName,
+			MType: models.Gauge,
+			Value: &value,
+		}, nil
+	default:
+		return nil, errors.New("wrong type")
+	}
+}
+
+func (s *MetricsService) UpdateMetric(m *models.Metrics) error {
+	var err error
+	switch m.MType {
+	case models.Counter:
+		err = s.updateCounter(m)
+	case models.Gauge:
+		err = s.updateGauge(m)
 	default:
 		err = errors.New("wrong type")
 	}
@@ -40,39 +76,33 @@ func (s *MetricsService) UpdateMetric(mType, mName, mValue string) error {
 	return err
 }
 
-func (s *MetricsService) updateCounter(name, strValue string) error {
-	value, err := strconv.ParseInt(strValue, 10, 64)
-	if err != nil {
-		return errors.New("value must be integer")
+func (s *MetricsService) updateCounter(updateData *models.Metrics) error {
+	if updateData.MType != models.Counter {
+		return errors.New("wrong type")
 	}
-	metrics := s.getOrCreateMetric(models.Counter, name)
-	fValue := float64(value)
-	if metrics.Value != nil {
-		fValue = fValue + *metrics.Value
-	}
-	metrics.Value = &fValue
 
-	err = s.repo.Save(metrics)
+	dbMetrics := s.getOrCreateMetric(models.Counter, updateData.ID)
+	if dbMetrics.Delta != nil {
+		*updateData.Delta += *dbMetrics.Delta
+	}
+	dbMetrics.Delta = updateData.Delta
+
+	err := s.repo.Save(dbMetrics)
 	if err != nil {
 		return err
 	}
-	s.logger.Debug("Metric updated", slog.String("mType", models.Counter), slog.String("ID", name),
-		slog.Int64("calue", value))
+	s.logger.Debug("Metric updated", slog.String("mType", models.Counter), slog.String("ID", dbMetrics.ID),
+		slog.Int64("value", *dbMetrics.Delta))
 	return nil
 }
 
-func (s *MetricsService) updateGauge(name string, strValue string) error {
-	value, err := strconv.ParseFloat(strValue, 64)
+func (s *MetricsService) updateGauge(updateData *models.Metrics) error {
+	err := s.repo.Save(updateData)
 	if err != nil {
 		return err
 	}
-
-	err = s.repo.Save(&models.Metrics{ID: name, MType: models.Gauge, Value: &value})
-	if err != nil {
-		return err
-	}
-	s.logger.Debug("Metric updated", slog.String("mType", models.Gauge), slog.String("ID", name),
-		slog.Float64("value", value))
+	s.logger.Debug("Metric updated", slog.String("mType", models.Gauge), slog.String("ID", updateData.ID),
+		slog.Float64("value", *updateData.Value))
 	return nil
 }
 

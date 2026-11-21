@@ -21,5 +21,8 @@ type Metrics struct {
 }
 
 func (m *Metrics) ValueStr() string {
+	if m.MType == Counter {
+		return strconv.FormatInt(*m.Delta, 10)
+	}
 	return strconv.FormatFloat(*m.Value, 'f', -1, 64)
 }
