@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	config := config.ParseAgentFlags()
+	config := config.GetAgentConfig()
 	app := agent.ConfigureTestApp(config)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
