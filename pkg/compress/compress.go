@@ -3,6 +3,7 @@ package compress
 import (
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"io"
 )
 
@@ -36,4 +37,50 @@ func Decompress(input io.Reader) ([]byte, error) {
 	}
 
 	return b.Bytes(), nil
+}
+
+type CopmpressWriter struct {
+	gw     *gzip.Writer
+	closer io.Closer
+}
+
+func NewCompressWriter(w io.Writer) *CopmpressWriter {
+	var closer io.Closer
+	if c, ok := w.(io.Closer); ok {
+		closer = c
+	}
+	return &CopmpressWriter{
+		gw:     gzip.NewWriter(w),
+		closer: closer,
+	}
+}
+
+func (w *CopmpressWriter) Write(p []byte) (int, error) {
+	if w.gw == nil {
+		return 0, errors.New("write on closed gzip writer")
+	}
+	return w.gw.Write(p)
+}
+
+func (w *CopmpressWriter) Flush() error {
+	if w.gw == nil {
+		return errors.New("flush on closed gzip writer")
+	}
+	return w.gw.Flush()
+}
+
+func (w *CopmpressWriter) Close() error {
+	if w.gw == nil {
+		return nil
+	}
+
+	gzErr := w.gw.Close()
+	w.gw = nil
+
+	var err error
+	if w.closer != nil {
+		err = w.closer.Close()
+	}
+
+	return errors.Join(gzErr, err)
 }

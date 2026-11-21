@@ -35,27 +35,32 @@ func (c *compressResponseWriter) Write(p []byte) (int, error) {
 	if !c.headerSet {
 		c.WriteHeader(http.StatusOK)
 	}
-	if c.useCompression {
-		compressed, err := compress.Compress(p)
-		if err != nil {
-			return 0, err
-		}
-		_, err = c.writer.Write(compressed)
-		return len(p), err
-	}
 
 	return c.writer.Write(p)
 }
 
 func (c *compressResponseWriter) WriteHeader(statusCode int) {
-	contentType := c.rw.Header().Get("Content-Type")
-	if slices.Contains(c.supportedContentTypes, strings.Split(contentType, ";")[0]) {
-		c.rw.Header().Set("Content-Encoding", "gzip")
-		c.useCompression = true
+	if c.headerSet {
+		return
 	}
+	c.headerSet = true
 	c.writer = c.rw
 
-	c.headerSet = true
+	contentType := strings.TrimSpace(
+		strings.Split(c.Header().Get("Content-Type"), ";")[0],
+	)
+
+	if statusCode >= 200 &&
+		statusCode < 300 &&
+		statusCode != http.StatusNoContent &&
+		statusCode != http.StatusResetContent &&
+		c.Header().Get("Content-Encoding") == "" &&
+		slices.Contains(c.supportedContentTypes, contentType) {
+
+		c.Header().Set("Content-Encoding", "gzip")
+		c.Header().Del("Content-Length")
+		c.writer = compress.NewCompressWriter(c.rw)
+	}
 	c.rw.WriteHeader(statusCode)
 }
 
