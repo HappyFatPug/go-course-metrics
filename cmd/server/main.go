@@ -21,7 +21,7 @@ import (
 func main() {
 	config := config.GetServerConfig()
 
-	app, err := app.ConfigureApp(config.Debug, config.StoreCfg)
+	app, err := app.ConfigureApp(config.Debug, config.StoreCfg, config.DBCfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -31,6 +31,7 @@ func main() {
 	router.HandleFunc("/", handler.GetAll(app.Service, app.Logger)).Methods("GET")
 	router.HandleFunc("/update/{type}/{name}/{value}", handler.UpdateMetric(app.Service, app.Logger)).Methods("POST")
 	router.HandleFunc("/value/{type}/{name}", handler.GetMetric(app.Service)).Methods("GET")
+	router.HandleFunc("/ping", handler.DBPing(app.DB, app.Logger)).Methods("GET")
 
 	jsonRouter := router.PathPrefix("").Subrouter()
 	jsonRouter.Use(middleware.JSONRequired(app.Logger))
@@ -97,6 +98,15 @@ func main() {
 		app.Logger.Error("Server forced to shutdown", slog.String("error", err.Error()))
 	} else {
 		app.Logger.Warn("Server stopped")
+	}
+
+	dbShutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := app.DB.Close(dbShutdownCtx); err != nil {
+		app.Logger.Error("DB close error", slog.String("error", err.Error()))
+	} else {
+		app.Logger.Warn("DB connection closed")
 	}
 
 	wg.Wait()

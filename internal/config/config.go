@@ -8,6 +8,10 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
+type DbConfig struct {
+	DatabaseDSN string `env:"DATABASE_DSN"`
+}
+
 type StoreConfig struct {
 	StoreInterval   int64  `env:"STORE_INTERVAL"`
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
@@ -17,6 +21,7 @@ type StoreConfig struct {
 type ServerConfig struct {
 	NetAddr  flags.NetAddress `env:"ADDRESS"`
 	StoreCfg *StoreConfig
+	DBCfg    *DbConfig
 	Debug    bool
 }
 
@@ -27,12 +32,14 @@ func GetServerConfig() *ServerConfig {
 			Port: 8080,
 		},
 		StoreCfg: &StoreConfig{},
+		DBCfg:    &DbConfig{},
 	}
 	flag.BoolVar(&config.Debug, "debug", false, "Debug mode")
 	flag.Var(&config.NetAddr, "a", "Net address host:port")
 	flag.Int64Var(&config.StoreCfg.StoreInterval, "i", 300, "Store interval")
 	flag.StringVar(&config.StoreCfg.FileStoragePath, "f", "./dump.json", "File storeage path")
 	flag.BoolVar(&config.StoreCfg.Restore, "r", false, "Restore from store file")
+	flag.StringVar(&config.DBCfg.DatabaseDSN, "d", "", "DB connect string")
 
 	// parse cli arguments
 	flag.Parse()

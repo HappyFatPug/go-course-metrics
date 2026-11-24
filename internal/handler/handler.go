@@ -2,11 +2,14 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"html/template"
 	"log/slog"
 	"net/http"
+	"time"
 
+	"github.com/HappyFatPug/go-course-metrics/internal/db"
 	appErrors "github.com/HappyFatPug/go-course-metrics/internal/errors"
 	models "github.com/HappyFatPug/go-course-metrics/internal/model"
 	"github.com/gorilla/mux"
@@ -199,4 +202,20 @@ func JSONErrorRequestHelper(w http.ResponseWriter, r *http.Request, logger *slog
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(code)
 	body.WriteTo(w)
+}
+
+func DBPing(db *db.DB, logger *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if err := db.PingContext(ctx); err != nil {
+			logger.Error("DB ping error", slog.String("error", err.Error()))
+
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
 }

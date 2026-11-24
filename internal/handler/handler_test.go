@@ -19,6 +19,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func getTestApp() (*app.App, error) {
+	return app.ConfigureApp(false, &config.StoreConfig{}, &config.DbConfig{})
+}
+
 func TestUpdateMetricHandler(t *testing.T) {
 	testCases := []struct {
 		name     string
@@ -54,7 +58,7 @@ func TestUpdateMetricHandler(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app, err := app.ConfigureApp(false, &config.StoreConfig{})
+			app, err := getTestApp()
 			require.NoError(t, err)
 
 			router := mux.NewRouter()
@@ -132,7 +136,7 @@ func TestGetMetric(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app, err := app.ConfigureApp(false, &config.StoreConfig{})
+			app, err := getTestApp()
 			require.NoError(t, err)
 
 			for _, m := range initialMetrics {
@@ -178,7 +182,7 @@ func TestGetAll(t *testing.T) {
 		},
 	}
 
-	app, err := app.ConfigureApp(false, &config.StoreConfig{})
+	app, err := getTestApp()
 	require.NoError(t, err)
 
 	for _, m := range initialMetrics {
@@ -297,7 +301,7 @@ func TestUpdateMetricJSONHandler(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app, err := app.ConfigureApp(false, &config.StoreConfig{})
+			app, err := getTestApp()
 			require.NoError(t, err)
 
 			router := mux.NewRouter()
@@ -400,7 +404,7 @@ func TestGetMetricJSON(t *testing.T) {
 
 	for _, test := range testCases {
 		t.Run(test.name, func(t *testing.T) {
-			app, err := app.ConfigureApp(false, &config.StoreConfig{})
+			app, err := getTestApp()
 			require.NoError(t, err)
 
 			for _, m := range initialMetricsRaw {
